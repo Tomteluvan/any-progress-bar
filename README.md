@@ -89,7 +89,7 @@ build with `./gradlew buildPlugin -PpublicBuild`.
 
 ## License
 
-[MIT](LICENSE) (c) Mikael Bro
+[MIT](LICENSE) (c) Mikael Broström
 
 ## Image support and limits
 

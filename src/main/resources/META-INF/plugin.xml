@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>dev.anyprogressbar</id>
     <name>Any Progress Bar</name>
-    <vendor>Mikael Bro</vendor>
+    <vendor>Mikael Broström</vendor>
     <description><![CDATA[
         Animal and Tung Tung Tung Sahur themed progress bars with a built-in design editor. Choose from the built-in
         presets or combine your own PNG, JPG and SVG object, trail and background
