@@ -13,3 +13,6 @@ src/main/resources/art/brand/
 local-releases/
 LOCAL-THEMES.md
 publish/
+
+# Unedited screenshot (shows local-only presets); use docs/in-editor-example.png
+/in-editor-example.png

@@ -10,6 +10,8 @@ images.
 
 ## Presets
 
+![Preview of the built-in themes](docs/theme-previews.png)
+
 **Animals**
 
 | Animal | Trail | Motion |
@@ -46,6 +48,8 @@ your custom designs are kept.
 ## Use
 
 Open **Settings > Appearance & Behavior > Any Progress Bar**.
+
+![The Any Progress Bar editor in IntelliJ](docs/in-editor-example.png)
 
 - Pick a design from the list and click **Apply** to make it the active one.
 - **New** / **Duplicate** create a design; **Delete** removes one.
