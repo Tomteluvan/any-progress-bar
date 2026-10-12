@@ -1,0 +1,17 @@
+<idea-plugin>
+    <id>dev.anyprogressbar</id>
+    <name>Any Progress Bar</name>
+    <vendor>Mikael Bro</vendor>
+    <description><![CDATA[
+        Animal and Tung Tung Tung Sahur themed progress bars with a built-in design editor. Choose from the built-in
+        presets or combine your own PNG, JPG and SVG object, trail and background
+        images, colours and motion. Configure under Settings | Appearance &amp; Behavior | Any Progress Bar.
+    ]]></description>
+    <depends>com.intellij.modules.platform</depends>
+    <extensions defaultExtensionNs="com.intellij">
+        <notificationGroup id="Any Progress Bar" displayType="BALLOON"/>
+        <applicationConfigurable parentId="appearance" id="dev.anyprogressbar.settings"
+            displayName="Any Progress Bar" instance="dev.anyprogressbar.DesignConfigurable"/>
+        <postStartupActivity implementation="dev.anyprogressbar.ProgressStartupActivity"/>
+    </extensions>
+</idea-plugin>

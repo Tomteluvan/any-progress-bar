@@ -1,0 +1,15 @@
+.gradle/
+.intellijPlatform/
+build/
+.idea/
+*.iml
+.DS_Store
+.kotlin/
+local.properties
+out/
+
+# Local-only themes and builds, not published
+src/main/resources/art/brand/
+local-releases/
+LOCAL-THEMES.md
+publish/
