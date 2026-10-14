@@ -34,8 +34,9 @@ java {
 }
 
 tasks.withType<JavaCompile>().configureEach { options.release = 21 }
-// Local-only artwork (src/main/resources/art/brand) is git-ignored; pass -PpublicBuild to leave it out of the plugin.
-tasks.processResources { if (project.hasProperty("publicBuild")) exclude("art/brand/**") }
+// Local-only artwork (src/main/resources/art/brand) is git-ignored and left out of the plugin by default;
+// pass -PlocalBuild to include it in builds for your own use.
+tasks.processResources { if (!project.hasProperty("localBuild")) exclude("art/brand/**") }
 tasks.test { useJUnitPlatform(); systemProperty("java.awt.headless", "true") }
 
 intellijPlatform {

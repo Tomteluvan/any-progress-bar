@@ -88,8 +88,8 @@ blocked at install time. Future IDE API changes may still require plugin updates
 3. Run `./gradlew test`.
 
 Private presets can also be listed in an optional `src/main/resources/art/brand/presets.tsv`
-(see `Design.optionalPresets()`); that folder is git-ignored and left out of the published
-build with `./gradlew buildPlugin -PpublicBuild`.
+(see `Design.optionalPresets()`); that folder is git-ignored and left out of builds by default.
+Pass `-PlocalBuild` (`./gradlew buildPlugin -PlocalBuild`) to include it in a build for your own use.
 
 ## License
 
