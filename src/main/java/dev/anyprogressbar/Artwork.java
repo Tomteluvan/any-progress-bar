@@ -4,6 +4,7 @@ import com.github.weisj.jsvg.SVGDocument;
 import com.github.weisj.jsvg.parser.SVGLoader;
 import com.github.weisj.jsvg.attributes.ViewBox;
 import com.github.weisj.jsvg.parser.LoaderContext;
+import com.github.weisj.jsvg.renderer.awt.NullPlatformSupport;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -142,6 +143,6 @@ public final class Artwork {
 
     public void draw(Graphics2D graphics, int x, int y, int width, int height) {
         if (vector == null) graphics.drawImage(raster, x, y, width, height, null);
-        else vector.render(null, graphics, new ViewBox(x, y, width, height));
+        else vector.renderWithPlatform(NullPlatformSupport.INSTANCE, graphics, new ViewBox(x, y, width, height));
     }
 }
