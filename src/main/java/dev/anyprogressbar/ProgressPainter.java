@@ -5,6 +5,8 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.RoundRectangle2D;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class ProgressPainter {
     private final Design design;
@@ -12,13 +14,42 @@ public final class ProgressPainter {
     private final Artwork trail;
     private final Artwork background;
 
+    private final List<String> skippedLayers = new ArrayList<>();
+
+    /** Strict: any unreadable image is an error, so the editor can report it. */
     public ProgressPainter(Design design) throws IOException {
+        this(design, false);
+    }
+
+    /** Lenient: unreadable image layers are skipped (see {@link #skippedLayers()}) and the rest still renders. */
+    public static ProgressPainter lenient(Design design) {
+        try {
+            return new ProgressPainter(design, true);
+        } catch (IOException e) {
+            throw new IllegalStateException(e); // not thrown in lenient mode
+        }
+    }
+
+    private ProgressPainter(Design design, boolean lenient) throws IOException {
         design.validate();
         this.design = design.copy();
-        object = Artwork.load(design.objectImage);
-        trail = Artwork.load(design.trailImage);
-        background = Artwork.load(design.backgroundImage);
+        object = layer("Object image", design.objectImage, lenient);
+        trail = layer("Trail image", design.trailImage, lenient);
+        background = layer("Background image", design.backgroundImage, lenient);
     }
+
+    private Artwork layer(String label, String reference, boolean lenient) throws IOException {
+        try {
+            return Artwork.load(reference);
+        } catch (IOException | RuntimeException e) {
+            if (!lenient) throw e;
+            skippedLayers.add(label + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+    /** Human-readable reasons for layers left out of a lenient painter; empty when everything loaded. */
+    public List<String> skippedLayers() { return List.copyOf(skippedLayers); }
 
     public static double position(boolean indeterminate, double progress, double seconds, int speed) {
         if (!indeterminate) return Math.max(0, Math.min(1, progress));

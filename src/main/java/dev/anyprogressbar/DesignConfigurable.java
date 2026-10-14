@@ -4,6 +4,7 @@ import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.ui.Messages;
+import com.intellij.ui.ColorPanel;
 import com.intellij.ui.DocumentAdapter;
 import com.intellij.util.ui.JBUI;
 import java.awt.BorderLayout;
@@ -35,6 +36,7 @@ public final class DesignConfigurable implements Configurable {
     private JTextField trail;
     private JTextField background;
     private JTextField color;
+    private ColorPanel swatch;
     private JSpinner size;
     private JSpinner speed;
     private JSpinner trailLength;
@@ -96,6 +98,8 @@ public final class DesignConfigurable implements Configurable {
             populate();
             dirty = true;
         }));
+        actions.add(button("Export...", this::exportSelected));
+        actions.add(button("Import...", this::importDesign));
         library.add(actions, BorderLayout.SOUTH);
         root.add(library, BorderLayout.WEST);
 
@@ -115,10 +119,15 @@ public final class DesignConfigurable implements Configurable {
         row(editor, 3, "Background image", imageRow(background, value -> selected().backgroundImage = value));
         JPanel colors = new JPanel(new BorderLayout(4, 0));
         colors.add(color);
-        colors.add(button("Choose", () -> {
-            Color chosen = JColorChooser.showDialog(root, "Background colour", Color.DARK_GRAY);
+        swatch = new ColorPanel();
+        swatch.addActionListener(e -> {
+            Color chosen = swatch.getSelectedColor();
             if (chosen != null) color.setText(String.format("#%06X", chosen.getRGB() & 0xffffff));
-        }), BorderLayout.EAST);
+        });
+        JPanel colorButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        colorButtons.add(swatch);
+        colorButtons.add(button("Use IDE colour", () -> color.setText("")));
+        colors.add(colorButtons, BorderLayout.EAST);
         row(editor, 4, "Background colour", colors);
         row(editor, 5, "Object size (px)", size);
         row(editor, 6, "Speed (%)", speed);
@@ -212,6 +221,7 @@ public final class DesignConfigurable implements Configurable {
     private void changed() {
         if (updating || selected() == null) return;
         Design d = selected();
+        syncSwatch();
         d.name = name.getText();
         d.backgroundColor = color.getText().trim();
         d.size = (Integer) size.getValue();
@@ -221,6 +231,46 @@ public final class DesignConfigurable implements Configurable {
         dirty = true;
         designs.repaint();
         updatePreview();
+    }
+
+    private void syncSwatch() {
+        String text = color.getText().trim();
+        Color parsed = null;
+        if (text.matches("#[0-9a-fA-F]{6}")) parsed = Color.decode(text);
+        if (!java.util.Objects.equals(parsed, swatch.getSelectedColor())) swatch.setSelectedColor(parsed);
+    }
+
+    private void exportSelected() {
+        Design design = selected();
+        if (design == null) return;
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new java.io.File(design.name.replaceAll("[^A-Za-z0-9._-]+", "_") + "." + DesignPack.EXTENSION));
+        chooser.setFileFilter(new FileNameExtensionFilter("Any Progress Bar design", DesignPack.EXTENSION));
+        if (chooser.showSaveDialog(root) != JFileChooser.APPROVE_OPTION) return;
+        Path target = chooser.getSelectedFile().toPath();
+        if (!target.getFileName().toString().toLowerCase(java.util.Locale.ROOT).endsWith("." + DesignPack.EXTENSION)) {
+            target = target.resolveSibling(target.getFileName() + "." + DesignPack.EXTENSION);
+        }
+        if (java.nio.file.Files.exists(target) && Messages.showYesNoDialog(root, target.getFileName() + " already exists. Replace it?",
+                getDisplayName(), Messages.getQuestionIcon()) != Messages.YES) return;
+        try {
+            DesignPack.export(design, target);
+            Messages.showInfoMessage(root, "Exported to " + target, getDisplayName());
+        } catch (IOException | IllegalArgumentException e) {
+            Messages.showErrorDialog(root, e.getMessage(), "Could not export design");
+        }
+    }
+
+    private void importDesign() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileFilter(new FileNameExtensionFilter("Any Progress Bar design", DesignPack.EXTENSION));
+        if (chooser.showOpenDialog(root) != JFileChooser.APPROVE_OPTION) return;
+        try {
+            add(DesignPack.importFrom(chooser.getSelectedFile().toPath(),
+                Path.of(PathManager.getConfigPath(), "any-progress-bar", "assets")));
+        } catch (IOException | IllegalArgumentException e) {
+            Messages.showErrorDialog(root, e.getMessage(), "Could not import design");
+        }
     }
 
     private void updatePreview() {
@@ -243,6 +293,7 @@ public final class DesignConfigurable implements Configurable {
             trail.setText(d.trailImage);
             background.setText(d.backgroundImage);
             color.setText(d.backgroundColor);
+            syncSwatch();
             size.setValue(d.size);
             speed.setValue(d.speed);
             trailLength.setValue(d.trailLength);

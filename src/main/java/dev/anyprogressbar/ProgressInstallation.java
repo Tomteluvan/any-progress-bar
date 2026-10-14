@@ -10,7 +10,6 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Window;
-import java.io.IOException;
 import javax.swing.JProgressBar;
 import javax.swing.UIManager;
 
@@ -47,12 +46,20 @@ public final class ProgressInstallation implements Disposable {
         ProgressSettings.Data data = ProgressSettings.getInstance().getState();
         if (data.enabled) {
             try {
-                painter = new ProgressPainter(data.selected());
-            } catch (IOException | IllegalArgumentException e) {
+                painter = ProgressPainter.lenient(data.selected());
+                if (!painter.skippedLayers().isEmpty()) {
+                    String details = String.join("; ", painter.skippedLayers());
+                    Logger.getInstance(ProgressInstallation.class).warn("Skipped progress bar layers: " + details);
+                    NotificationGroupManager.getInstance().getNotificationGroup("Any Progress Bar")
+                        .createNotification("Some progress bar images could not be loaded",
+                            details + ". The rest of the design is still used. Open Any Progress Bar settings to replace them.",
+                            NotificationType.WARNING).notify(null);
+                }
+            } catch (IllegalArgumentException e) {
                 Logger.getInstance(ProgressInstallation.class).warn("Cannot load progress bar design", e);
                 NotificationGroupManager.getInstance().getNotificationGroup("Any Progress Bar")
                     .createNotification("Progress bar design could not be loaded",
-                        e.getMessage() + ". Open Any Progress Bar settings to replace the image. Using the IDE progress bar.",
+                        e.getMessage() + ". Open Any Progress Bar settings to fix the design. Using the IDE progress bar.",
                         NotificationType.WARNING).notify(null);
             }
         }

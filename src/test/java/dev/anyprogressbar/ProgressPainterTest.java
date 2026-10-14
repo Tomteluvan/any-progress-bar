@@ -176,4 +176,46 @@ class ProgressPainterTest {
     private static int[] pixels(BufferedImage image) {
         return image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
     }
+
+    @Test void lenientPainterSkipsBrokenLayersButStillRenders() throws IOException {
+        Design d = Design.presets().getFirst().copy();
+        d.trailImage = temp.resolve("deleted.png").toString();
+        assertThrows(IOException.class, () -> new ProgressPainter(d));
+        ProgressPainter painter = ProgressPainter.lenient(d);
+        assertEquals(1, painter.skippedLayers().size());
+        assertTrue(painter.skippedLayers().getFirst().startsWith("Trail image"));
+        assertNotNull(render(painter, 0.5, false, 1, true));
+        assertTrue(ProgressPainter.lenient(Design.presets().getFirst()).skippedLayers().isEmpty());
+    }
+
+    @Test void designPackRoundTripsCustomAndBundledImages() throws IOException {
+        BufferedImage image = new BufferedImage(10, 10, BufferedImage.TYPE_INT_ARGB);
+        Path png = temp.resolve("object.png");
+        ImageIO.write(image, "png", png.toFile());
+        Design d = new Design();
+        d.name = "Shared \u00e5\u00e4\u00f6";
+        d.objectImage = Artwork.importFile(png, temp.resolve("assets-a"));
+        d.trailImage = "bundled:stars.svg";
+        d.backgroundColor = "#123456";
+        d.motion = Design.Motion.BOUNCE;
+        d.speed = 150;
+        Path pack = temp.resolve("shared." + DesignPack.EXTENSION);
+        DesignPack.export(d, pack);
+        Design imported = DesignPack.importFrom(pack, temp.resolve("assets-b"));
+        assertNotEquals(d.id, imported.id);
+        assertEquals(d.name, imported.name);
+        assertEquals("bundled:stars.svg", imported.trailImage);
+        assertEquals("", imported.backgroundImage);
+        assertEquals("#123456", imported.backgroundColor);
+        assertEquals(Design.Motion.BOUNCE, imported.motion);
+        assertEquals(150, imported.speed);
+        assertTrue(imported.objectImage.startsWith(temp.resolve("assets-b").toString()));
+        assertNotNull(Artwork.load(imported.objectImage));
+    }
+
+    @Test void designPackRejectsGarbage() throws IOException {
+        Path junk = temp.resolve("junk." + DesignPack.EXTENSION);
+        Files.writeString(junk, "not a zip");
+        assertThrows(IOException.class, () -> DesignPack.importFrom(junk, temp.resolve("assets")));
+    }
 }
