@@ -31,7 +31,7 @@ Ideas found in a code review. Items marked **Done** have been implemented.
 ## Build and release hygiene
 1. **Done (1.1.0)** `CHANGELOG.md` and `<change-notes>` in `plugin.xml`.
 2. Plugin icon (`pluginIcon.svg`), `<vendor url>`, Marketplace screenshots.
-3. GitHub Actions: `./gradlew test verifyCompatibilityMetadata` on PRs, build zip on tags.
+3. **Done** GitHub Actions: `ci.yml` tests PRs/main, `release.yml` publishes a release on `v*` tags.
 4. Run `verifyPlugin` against several IDE versions (no upper build limit is declared).
 5. Gradle version catalog (`libs.versions.toml`).
 6. Log errors from the optional `presets.tsv` instead of swallowing them silently.

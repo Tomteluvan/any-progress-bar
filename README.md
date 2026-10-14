@@ -91,6 +91,13 @@ Private presets can also be listed in an optional `src/main/resources/art/brand/
 (see `Design.optionalPresets()`); that folder is git-ignored and left out of builds by default.
 Pass `-PlocalBuild` (`./gradlew buildPlugin -PlocalBuild`) to include it in a build for your own use.
 
+## Releasing
+
+1. Bump `version` in `build.gradle.kts` and add a `CHANGELOG.md` entry.
+2. Commit, then `git tag v<version> && git push origin main v<version>`.
+3. The **Release** workflow runs the tests, builds the zip and attaches it to a new GitHub release.
+   It fails if the tag does not match the project version.
+
 ## License
 
 [MIT](LICENSE) (c) Mikael Broström
