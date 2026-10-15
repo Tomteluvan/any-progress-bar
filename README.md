@@ -1,5 +1,8 @@
 # Any Progress Bar
 
+[![JetBrains Marketplace](https://img.shields.io/jetbrains/plugin/v/35163?label=JetBrains%20Marketplace&logo=jetbrains)](https://plugins.jetbrains.com/plugin/35163-any-progress-bar)
+[![Downloads](https://img.shields.io/jetbrains/plugin/d/35163)](https://plugins.jetbrains.com/plugin/35163-any-progress-bar)
+
 An IntelliJ IDEA plugin that replaces the standard progress bar with animated,
 themeable ones. It ships with eight presets (animal and Tung Tung Sahur themes)
 and includes an in-IDE editor for creating your own designs from PNG, JPG or SVG images.
@@ -34,6 +37,14 @@ The Tung Tung Tung Sahur character is an original drawing of an internet meme ch
 ## Installation
 
 Requires **IntelliJ IDEA 2026.1 (build 261) or newer**.
+
+### From the JetBrains Marketplace (recommended)
+
+In the IDE, open **Settings > Plugins > Marketplace**, search for **Any Progress Bar**,
+click **Install** and restart the IDE. The plugin is also available on its
+[Marketplace page](https://plugins.jetbrains.com/plugin/35163-any-progress-bar).
+
+### From a release file
 
 1. Download `any-progress-bar-<version>.zip` from the repository's **Releases** page,
    or [build it from source](#building).
