@@ -1,0 +1,14 @@
+[versions]
+intellij-platform = "2.19.0"
+jsvg = "1.6.1"
+junit5 = "5.11.4"
+junit4 = "4.13.2"
+
+[libraries]
+jsvg = { module = "com.github.weisj:jsvg", version.ref = "jsvg" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit5" }
+junit-vintage = { module = "org.junit.vintage:junit-vintage-engine", version.ref = "junit5" }
+junit4 = { module = "junit:junit", version.ref = "junit4" }
+
+[plugins]
+intellij-platform = { id = "org.jetbrains.intellij.platform", version.ref = "intellij-platform" }

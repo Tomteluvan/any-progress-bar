@@ -5,7 +5,10 @@ import java.util.List;
 import java.util.UUID;
 
 public final class Design {
-    public enum Motion { GLIDE, BOUNCE, WIGGLE }
+    private static final com.intellij.openapi.diagnostic.Logger LOG =
+        com.intellij.openapi.diagnostic.Logger.getInstance(Design.class);
+
+    public enum Motion { GLIDE, BOUNCE, WIGGLE, HOP, SPIN, PULSE, BOB, PING_PONG }
     public String id = UUID.randomUUID().toString();
     public String name = "My design";
     public String objectImage = "";
@@ -91,14 +94,20 @@ public final class Design {
         try (var in = Design.class.getResourceAsStream("/art/brand/presets.tsv")) {
             if (in == null) return result;
             var reader = new java.io.BufferedReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
+            int lineNumber = 0;
             for (String line; (line = reader.readLine()) != null; ) {
+                lineNumber++;
                 if (line.isBlank() || line.startsWith("#")) continue;
-                String[] c = line.split("\\t", -1);
-                result.add(themed(c[0], c[1], c[2], c[3], c[4], c[5], Integer.parseInt(c[6]), Integer.parseInt(c[7]),
-                    Integer.parseInt(c[8]), Motion.valueOf(c[9])));
+                try {
+                    String[] c = line.split("\\t", -1);
+                    result.add(themed(c[0], c[1], c[2], c[3], c[4], c[5], Integer.parseInt(c[6]), Integer.parseInt(c[7]),
+                        Integer.parseInt(c[8]), Motion.valueOf(c[9])));
+                } catch (RuntimeException e) { // a malformed line must never break the plugin; skip it and say why
+                    LOG.warn("Ignoring presets.tsv line " + lineNumber + ": " + e, e);
+                }
             }
-        } catch (java.io.IOException | RuntimeException e) {
-            result.clear(); // a malformed optional file must never break the plugin
+        } catch (java.io.IOException e) {
+            LOG.warn("Cannot read presets.tsv", e);
         }
         return result;
     }

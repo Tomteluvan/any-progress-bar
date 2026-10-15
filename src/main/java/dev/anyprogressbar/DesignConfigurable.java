@@ -129,9 +129,14 @@ public final class DesignConfigurable implements Configurable {
         colorButtons.add(button("Use IDE colour", () -> color.setText("")));
         colors.add(colorButtons, BorderLayout.EAST);
         row(editor, 4, "Background colour", colors);
-        row(editor, 5, "Object size (px)", size);
-        row(editor, 6, "Speed (%)", speed);
-        row(editor, 7, "Trail length (px)", trailLength);
+        row(editor, 5, "Object size (px, 8-64)", size);
+        row(editor, 6, "Speed (%, 10-400)", speed);
+        row(editor, 7, "Trail length (px, 0-600)", trailLength);
+        size.setToolTipText("Height of the object in pixels (8-64); capped to the bar height.");
+        speed.setToolTipText("Percent. 100 = one lap every 4 seconds for indeterminate bars (10-400).");
+        trailLength.setToolTipText("Pixels of trail drawn behind the object (0-600); 0 hides the trail.");
+        motion.setToolTipText("How the object moves. Ping-pong only changes indeterminate bars.");
+        color.setToolTipText("#RRGGBB, or empty to use the IDE colour.");
         row(editor, 8, "Motion", motion);
         row(editor, 9, "", new JLabel("Clear any image to omit it. Empty colour uses the IDE colour."));
         row(editor, 10, "", new JLabel("Background images overlay the colour. PNG, JPG and static SVG supported."));
@@ -353,7 +358,7 @@ public final class DesignConfigurable implements Configurable {
         private ProgressPainter painter;
         private double progress = 0.65;
 
-        Preview() { setPreferredSize(new Dimension(400, 110)); }
+        Preview() { setPreferredSize(new Dimension(400, 170)); }
         @Override public void addNotify() { super.addNotify(); timer.start(); }
         @Override public void removeNotify() { timer.stop(); super.removeNotify(); }
         @Override protected void paintComponent(Graphics graphics) {
@@ -371,6 +376,13 @@ public final class DesignConfigurable implements Configurable {
                 g.drawString("Determinate", 0, 0);
                 g.translate(0, 6);
                 painter.paint(g, getWidth(), 30, progress, false, seconds, getBackground(), true);
+                g.translate(0, 42);
+                g.setColor(getForeground());
+                g.drawString("Compact (16 px) and status bar (8 px)", 0, 0);
+                g.translate(0, 6);
+                painter.paint(g, getWidth(), 16, progress, true, seconds, getBackground(), true);
+                g.translate(0, 22);
+                painter.paint(g, getWidth(), 8, progress, false, seconds, getBackground(), true);
             } finally { g.dispose(); }
         }
     }

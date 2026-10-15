@@ -8,37 +8,55 @@ import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
 import javax.swing.JComponent;
 import javax.swing.JProgressBar;
-import javax.swing.Timer;
+import javax.swing.event.ChangeListener;
 import javax.swing.plaf.ComponentUI;
 import javax.swing.plaf.basic.BasicProgressBarUI;
 
-public final class AnimalProgressBarUI extends BasicProgressBarUI {
-    private Timer timer;
+public final class AnimalProgressBarUI extends BasicProgressBarUI implements AnimationClock.Client {
     private HierarchyListener visibilityListener;
-    private final long started = System.nanoTime();
+    private ChangeListener valueListener;
+    private boolean registered;
 
     public static ComponentUI createUI(JComponent component) { return new AnimalProgressBarUI(); }
 
     @Override public void installUI(JComponent component) {
         super.installUI(component);
-        timer = new Timer(33, event -> component.repaint());
         visibilityListener = event -> {
-            if ((event.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0) updateTimer();
+            if ((event.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0) updateRegistration();
+        };
+        valueListener = event -> {
+            // A bar that was idle (0% / 100%) must repaint and may need to start animating again.
+            progressBar.repaint();
+            AnimationClock.getInstance().wake();
         };
         component.addHierarchyListener(visibilityListener);
-        updateTimer();
+        progressBar.addChangeListener(valueListener);
+        updateRegistration();
     }
 
-    private void updateTimer() {
-        if (progressBar.isShowing() && progressBar.getOrientation() == JProgressBar.HORIZONTAL) timer.start();
-        else timer.stop();
+    private void updateRegistration() {
+        boolean wanted = progressBar.isShowing() && progressBar.getOrientation() == JProgressBar.HORIZONTAL;
+        if (wanted && !registered) AnimationClock.getInstance().register(this);
+        else if (!wanted && registered) AnimationClock.getInstance().unregister(this);
+        registered = wanted;
     }
 
     @Override public void uninstallUI(JComponent component) {
-        timer.stop();
+        if (registered) AnimationClock.getInstance().unregister(this);
+        registered = false;
         component.removeHierarchyListener(visibilityListener);
+        progressBar.removeChangeListener(valueListener);
         super.uninstallUI(component);
     }
+
+    @Override public boolean isAnimating() {
+        if (!progressBar.isShowing()) return false;
+        if (progressBar.isIndeterminate()) return true;
+        double progress = progressBar.getPercentComplete();
+        return progress > 0 && progress < 1;
+    }
+
+    @Override public void tick() { progressBar.repaint(); }
 
     @Override protected void paintDeterminate(Graphics g, JComponent c) { paintDesign(g, c, false); }
     @Override protected void paintIndeterminate(Graphics g, JComponent c) { paintDesign(g, c, true); }
@@ -58,7 +76,7 @@ public final class AnimalProgressBarUI extends BasicProgressBarUI {
             g.translate(insets.left, insets.top);
             Color background = progressBar.getBackground();
             painter.paint(g, width, height, progressBar.getPercentComplete(), indeterminate,
-                (System.nanoTime() - started) / 1_000_000_000.0,
+                AnimationClock.getInstance().seconds(),
                 background == null ? Color.DARK_GRAY : background,
                 progressBar.getComponentOrientation().isLeftToRight());
         } finally { g.dispose(); }

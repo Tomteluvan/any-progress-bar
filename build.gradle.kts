@@ -5,11 +5,11 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 plugins {
     java
-    id("org.jetbrains.intellij.platform") version "2.19.0"
+    alias(libs.plugins.intellij.platform)
 }
 
 group = "dev.anyprogressbar"
-version = "1.1.0"
+version = "1.2.0"
 
 repositories {
     mavenCentral()
@@ -21,11 +21,11 @@ dependencies {
         intellijIdea("2026.1")
         testFramework(TestFrameworkType.Platform)
     }
-    implementation("com.github.weisj:jsvg:1.6.1")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
+    implementation(libs.jsvg)
+    testImplementation(libs.junit.jupiter)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("junit:junit:4.13.2")
-    testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.11.4")
+    testImplementation(libs.junit4)
+    testRuntimeOnly(libs.junit.vintage)
 }
 
 java {

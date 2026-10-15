@@ -22,8 +22,13 @@ import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
 public final class Artwork {
+    static final int MAX_SVG_ELEMENTS = 5000;
+    static final int MAX_SVG_DEPTH = 32;
+
     private final BufferedImage raster;
     private final SVGDocument vector;
+    /** Last pre-scaled copy of {@link #raster}; avoids rescaling the source on every animation frame. */
+    private BufferedImage scaled;
 
     private Artwork(BufferedImage raster, SVGDocument vector) {
         this.raster = raster;
@@ -79,10 +84,21 @@ public final class Artwork {
                 throw new IOException("The file is not an SVG document.");
             }
             var nodes = root.getElementsByTagName("*");
+            if (nodes.getLength() > MAX_SVG_ELEMENTS) {
+                throw new IOException("SVG is too complex: at most " + MAX_SVG_ELEMENTS + " elements.");
+            }
+            validateSvgDepth(root, 1);
             validateSvgElement(root);
             for (int i = 0; i < nodes.getLength(); i++) validateSvgElement((Element) nodes.item(i));
         } catch (javax.xml.parsers.ParserConfigurationException | SAXException e) {
             throw new IOException("Invalid SVG: " + e.getMessage(), e);
+        }
+    }
+
+    private static void validateSvgDepth(Element element, int depth) throws IOException {
+        if (depth > MAX_SVG_DEPTH) throw new IOException("SVG is nested too deeply: at most " + MAX_SVG_DEPTH + " levels.");
+        for (var child = element.getFirstChild(); child != null; child = child.getNextSibling()) {
+            if (child instanceof Element e) validateSvgDepth(e, depth + 1);
         }
     }
 
@@ -142,7 +158,22 @@ public final class Artwork {
     }
 
     public void draw(Graphics2D graphics, int x, int y, int width, int height) {
-        if (vector == null) graphics.drawImage(raster, x, y, width, height, null);
+        if (vector == null) graphics.drawImage(scaledRaster(width, height), x, y, null);
         else vector.renderWithPlatform(NullPlatformSupport.INSTANCE, graphics, new ViewBox(x, y, width, height));
+    }
+
+    private BufferedImage scaledRaster(int width, int height) {
+        if (width <= 0 || height <= 0 || (width == raster.getWidth() && height == raster.getHeight())) return raster;
+        BufferedImage cached = scaled;
+        if (cached != null && cached.getWidth() == width && cached.getHeight() == height) return cached;
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = result.createGraphics();
+        try {
+            g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING, java.awt.RenderingHints.VALUE_RENDER_QUALITY);
+            g.drawImage(raster, 0, 0, width, height, null);
+        } finally { g.dispose(); }
+        scaled = result;
+        return result;
     }
 }
