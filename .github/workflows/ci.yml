@@ -24,3 +24,30 @@ jobs:
         with:
           name: any-progress-bar
           path: build/distributions/*.zip
+
+  # After a green push to main, publish a release when build.gradle.kts has a version that has no release yet.
+  # Bump `version` to ship; pushes that keep the same version are skipped. The tag is created by
+  # `gh release create` (tags pushed with GITHUB_TOKEN would not trigger release.yml, so the release is made here).
+  release:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: any-progress-bar
+          path: dist
+      - name: Publish release if version is new
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' build.gradle.kts | head -n1)
+          tag="v$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; nothing to do."
+            exit 0
+          fi
+          gh release create "$tag" dist/*.zip --target "$GITHUB_SHA" --title "$tag" --generate-notes
