@@ -7,9 +7,6 @@ An IntelliJ IDEA plugin that replaces the standard progress bar with animated,
 themeable ones. It ships with eight presets (animal and Tung Tung Sahur themes)
 and includes an in-IDE editor for creating your own designs from PNG, JPG or SVG images.
 
-> Inspired by the **Ultimate Progress Bar** plugin. This is an independent
-> implementation and contains no code or assets from that project.
-
 ## Presets
 
 ![Preview of the built-in themes](docs/theme-previews.png)
@@ -165,6 +162,12 @@ src/main/resources/META-INF/        plugin descriptor and icons
 src/test/java/                      unit and IDE integration tests
 docs/                               screenshots and the improvement backlog
 ```
+
+## Support
+
+If you enjoy the plugin, you can support its development on
+[Buy Me a Coffee](https://buymeacoffee.com/Tomteluvan). Bug reports, ideas and pull
+requests are also welcome through the repository's issue tracker.
 
 ## License
 
