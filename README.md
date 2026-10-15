@@ -2,6 +2,7 @@
 
 [![JetBrains Marketplace](https://img.shields.io/jetbrains/plugin/v/35163?label=JetBrains%20Marketplace&logo=jetbrains)](https://plugins.jetbrains.com/plugin/35163-any-progress-bar)
 [![Downloads](https://img.shields.io/jetbrains/plugin/d/35163)](https://plugins.jetbrains.com/plugin/35163-any-progress-bar)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/Tomteluvan)
 
 An IntelliJ IDEA plugin that replaces the standard progress bar with animated,
 themeable ones. It ships with eight presets (animal and Tung Tung Sahur themes)
@@ -165,9 +166,11 @@ docs/                               screenshots and the improvement backlog
 
 ## Support
 
-If you enjoy the plugin, you can support its development on
-[Buy Me a Coffee](https://buymeacoffee.com/Tomteluvan). Bug reports, ideas and pull
-requests are also welcome through the repository's issue tracker.
+If you enjoy the plugin, you can support its development:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/Tomteluvan)
+
+Bug reports, ideas and pull requests are also welcome through the repository's issue tracker.
 
 ## License
 
