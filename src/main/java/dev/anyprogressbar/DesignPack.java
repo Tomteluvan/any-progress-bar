@@ -103,7 +103,11 @@ public final class DesignPack {
     private static String resolve(String value, java.util.Map<String, byte[]> images, Path assets) throws IOException {
         if (value.isBlank()) return "";
         if (value.startsWith("bundled:")) {
-            if (Artwork.class.getResource("/art/" + value.substring(8)) == null) {
+            String name = value.substring(8);
+            if (!name.matches("[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*\\.(svg|png|jpe?g)") || name.contains("..")) {
+                throw new IOException("Invalid bundled artwork name: " + value);
+            }
+            if (Artwork.class.getResource("/art/" + name) == null) {
                 throw new IOException("Unknown bundled artwork: " + value);
             }
             return value;

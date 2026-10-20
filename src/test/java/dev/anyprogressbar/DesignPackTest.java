@@ -90,6 +90,16 @@ class DesignPackTest {
         assertTrue(e.getMessage().contains("Unknown bundled artwork"));
     }
 
+    @Test void rejectsBundledReferencesThatEscapeTheArtFolder() throws IOException {
+        for (String bad : new String[] {
+            "../META-INF/plugin.xml", "../META-INF/pluginIcon.svg", "stars.svg/../../META-INF/pluginIcon.svg",
+            "..\\META-INF\\pluginIcon.svg", "/META-INF/pluginIcon.svg", "plugin.xml", "stars"}) {
+            var map = entries("name=Escape\nobject=bundled:" + bad.replace("\\", "\\\\") + "\n");
+            var e = assertThrows(IOException.class, () -> DesignPack.importFrom(pack(map), assets()), bad);
+            assertTrue(e.getMessage().contains("bundled artwork"), bad + ": " + e.getMessage());
+        }
+    }
+
     @Test void rejectsReferenceToArbitraryFilesystemPaths() throws IOException {
         Path secret = Files.writeString(temp.resolve("secret.png"), "x");
         var map = entries("name=Sneaky\nobject=" + secret.toString().replace("\\", "\\\\") + "\n");
