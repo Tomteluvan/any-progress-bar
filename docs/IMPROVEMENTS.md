@@ -19,7 +19,7 @@ Ideas found in a code review. Items marked **Done** have been implemented.
 5. Random or rotating designs per launch/project/task.
 6. Light/dark theme variants per design (presets are dark-only colours).
 7. Per-task designs (indexing vs builds); needs a way to identify the owning task.
-8. **Done (1.3.0, partly)** More bundled themes: six everyday-object presets (chair, hamburger, table fan, mug, umbrella, alarm clock). Still open: seasonal themes.
+8. **Done (1.3.0, partly)** More bundled themes: six everyday-object presets (chair, hamburger, table fan, mug, umbrella, alarm clock) and a smiley toggle. Still open: seasonal themes.
 
 ## Settings UI
 1. **Done (1.1.0)** Colour swatch/picker for the background colour.
@@ -44,7 +44,7 @@ references, element/depth caps, entries read by fixed name only, 10 MB per entry
 2. Pin GitHub Actions to commit SHAs, add `dependabot.yml`, and put `PUBLISH_TOKEN` in a GitHub Environment with required approval.
 3. Sign the plugin (`signPlugin`; certificate chain, private key and password as secrets).
 4. Gradle wrapper validation and dependency verification (`verification-metadata.xml`) for `jsvg`.
-5. Reject `..` and path separators in `bundled:` references when importing a pack (`DesignPack.resolve`). It currently only checks that the resource exists; a non-image resource still fails to load.
+5. **Done (1.3.0)** Reject `..`, path separators tricks and non-image names in `bundled:` references when importing a pack (`DesignPack.resolve`). Previously `bundled:../META-INF/plugin.xml` passed the existence check and only failed later because it is not an image.
 6. Cap the total size and number of entries in a pack, and the length of a design name.
 7. `Artwork.importFile` validates a file and then reads it again, and SVGs are parsed twice (validator, then `jsvg`). Read the bytes once and validate those.
 8. `ProgressSettings.loadState` throws on invalid saved state (duplicate ids, no designs); fall back to the defaults instead.

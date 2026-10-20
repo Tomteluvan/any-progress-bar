@@ -1,7 +1,8 @@
 # Changelog
 
 ## 1.3.0
-- Six new everyday-object presets: chair, hamburger, table fan, coffee mug, umbrella and alarm clock, each with its own trail.
+- Seven new presets: chair, hamburger, table fan, coffee mug, umbrella, alarm clock and a smiley toggle, each with its own trail.
+- Importing a design pack rejects bundled artwork names that point outside the artwork folder.
 - Existing users receive the new presets once on upgrade; custom designs are preserved.
 - Releases are published to the JetBrains Marketplace automatically by CI when the version is bumped on main.
 

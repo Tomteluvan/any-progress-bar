@@ -5,7 +5,7 @@
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/Tomteluvan)
 
 An IntelliJ IDEA plugin that replaces the standard progress bar with animated,
-themeable ones. It ships with fourteen presets (animal, everyday-object and Tung Tung Sahur themes)
+themeable ones. It ships with fifteen presets (animal, everyday-object and Tung Tung Sahur themes)
 and includes an in-IDE editor for creating your own designs from PNG, JPG or SVG images.
 
 ## Presets
@@ -32,6 +32,7 @@ and includes an in-IDE editor for creating your own designs from PNG, JPG or SVG
 | Coffee mug | Steam | Bob |
 | Umbrella | Raindrops | Wiggle |
 | Alarm clock | Notes | Pulse |
+| Smiley toggle | Orange fill | Glide |
 
 **Character themes**
 

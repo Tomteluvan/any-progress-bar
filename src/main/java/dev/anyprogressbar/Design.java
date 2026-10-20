@@ -84,7 +84,8 @@ public final class Design {
             themed("fan", "Table fan & breeze", "fan.svg", "wind.svg", "", "#1F2F38", 32, 120, 220, Motion.SPIN),
             themed("mug", "Coffee mug & steam", "mug.svg", "steam.svg", "", "#2B2724", 32, 90, 200, Motion.BOB),
             themed("umbrella", "Umbrella & raindrops", "umbrella.svg", "raindrops.svg", "", "#222E3D", 32, 100, 200, Motion.WIGGLE),
-            themed("alarm-clock", "Alarm clock & notes", "alarm-clock.svg", "notes.svg", "", "#2A2A3A", 32, 100, 200, Motion.PULSE)
+            themed("alarm-clock", "Alarm clock & notes", "alarm-clock.svg", "notes.svg", "", "#2A2A3A", 32, 100, 200, Motion.PULSE),
+            themed("smiley-toggle", "Smiley toggle", "smiley-toggle.svg", "toggle-fill.svg", "", "#383D5E", 32, 100, 600, Motion.GLIDE)
         ));
         all.addAll(optionalPresets());
         return all;
