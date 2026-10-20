@@ -19,7 +19,7 @@ Ideas found in a code review. Items marked **Done** have been implemented.
 5. Random or rotating designs per launch/project/task.
 6. Light/dark theme variants per design (presets are dark-only colours).
 7. Per-task designs (indexing vs builds); needs a way to identify the owning task.
-8. More bundled themes, e.g. seasonal.
+8. **Done (1.3.0, partly)** More bundled themes: six everyday-object presets (chair, hamburger, table fan, mug, umbrella, alarm clock). Still open: seasonal themes.
 
 ## Settings UI
 1. **Done (1.1.0)** Colour swatch/picker for the background colour.
@@ -29,10 +29,22 @@ Ideas found in a code review. Items marked **Done** have been implemented.
 5. **Done (1.2.0)** Field hints (speed is %, trail length is px).
 
 ## Build and release hygiene
-1. **Done (1.1.0)** `CHANGELOG.md` and `<change-notes>` in `plugin.xml`.
+1. **Done (1.1.0, reworked 1.3.0)** `CHANGELOG.md`; the Marketplace change notes are now generated from the section matching the project version (`org.jetbrains.changelog`).
 2. **Done (1.2.0, partly)** Plugin icon and `<vendor url>`. Still open: Marketplace screenshots.
-3. **Done** GitHub Actions: `ci.yml` tests PRs/main, `release.yml` publishes a release on `v*` tags.
-4. Run `verifyPlugin` against several IDE versions (no upper build limit is declared).
+3. **Done (1.3.0)** GitHub Actions: `ci.yml` tests PRs and main; after a green push to main with a new `version` it publishes to the JetBrains Marketplace (`PUBLISH_TOKEN` secret) and then creates the GitHub release. `release.yml` was removed because the tag-triggered flow never ran after `ci.yml` had already created the release.
+4. **Done (1.3.0)** `verifyPlugin` runs in CI against the recommended IDE versions (no upper build limit is declared).
 5. **Done (1.2.0)** Gradle version catalog (`libs.versions.toml`).
 6. **Done (1.2.0)** Log errors from the optional `presets.tsv` instead of swallowing them silently.
 7. **Done (1.2.0)** Tests for hostile SVGs in `Artwork.validateSvg` (external hrefs, `@import`, entity expansion).
+
+## Security and hardening
+Found in a review; the SVG validator and the `.apbdesign` importer are already hardened (no DOCTYPE, no external
+references, element/depth caps, entries read by fixed name only, 10 MB per entry).
+1. **Done (1.3.0)** Tests for `DesignPack` abuse: missing/oversized entries, bad references, path-traversal entry names, hostile SVGs, invalid values, content-hash storage (`DesignPackTest`).
+2. Pin GitHub Actions to commit SHAs, add `dependabot.yml`, and put `PUBLISH_TOKEN` in a GitHub Environment with required approval.
+3. Sign the plugin (`signPlugin`; certificate chain, private key and password as secrets).
+4. Gradle wrapper validation and dependency verification (`verification-metadata.xml`) for `jsvg`.
+5. Reject `..` and path separators in `bundled:` references when importing a pack (`DesignPack.resolve`). It currently only checks that the resource exists; a non-image resource still fails to load.
+6. Cap the total size and number of entries in a pack, and the length of a design name.
+7. `Artwork.importFile` validates a file and then reads it again, and SVGs are parsed twice (validator, then `jsvg`). Read the bytes once and validate those.
+8. `ProgressSettings.loadState` throws on invalid saved state (duplicate ids, no designs); fall back to the defaults instead.
