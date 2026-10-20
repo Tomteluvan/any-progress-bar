@@ -61,6 +61,9 @@ intellijPlatform {
     publishing {
         token = providers.environmentVariable("PUBLISH_TOKEN")
     }
+    pluginVerification {
+        ides { recommended() }
+    }
 }
 
 val pluginArchive = tasks.named<Zip>("buildPlugin").flatMap { it.archiveFile }
