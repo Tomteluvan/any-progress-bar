@@ -3,7 +3,7 @@
 ## 1.3.0
 - Six new everyday-object presets: chair, hamburger, table fan, coffee mug, umbrella and alarm clock, each with its own trail.
 - Existing users receive the new presets once on upgrade; custom designs are preserved.
-- Releases are published to the JetBrains Marketplace automatically from a version tag.
+- Releases are published to the JetBrains Marketplace automatically by CI when the version is bumped on main.
 
 ## 1.2.0
 - New motion types: hop, spin, pulse, bob and ping-pong (indeterminate bars travel back and forth).
