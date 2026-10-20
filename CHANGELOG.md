@@ -2,6 +2,7 @@
 
 ## 1.3.0
 - Seven new presets: chair, hamburger, table fan, coffee mug, umbrella, alarm clock and a smiley toggle, each with its own trail.
+- The trail now ends at the back of the object instead of its centre, so it no longer runs under the whole object.
 - Importing a design pack rejects bundled artwork names that point outside the artwork folder.
 - Existing users receive the new presets once on upgrade; custom designs are preserved.
 - Releases are published to the JetBrains Marketplace automatically by CI when the version is bumped on main.

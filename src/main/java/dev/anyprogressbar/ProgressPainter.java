@@ -54,6 +54,9 @@ public final class ProgressPainter {
     /** Bars shorter than this are drawn as a plain fill: artwork is unreadable at that size. */
     static final int MIN_ARTWORK_HEIGHT = 12;
 
+    /** Share of the object's width the trail runs under it: the trail sits behind the object, tucked in just enough to avoid gaps. */
+    private static final float TRAIL_TUCK = 0.2f;
+
     public static double position(boolean indeterminate, double progress, double seconds, int speed) {
         return position(indeterminate, progress, seconds, speed, Design.Motion.GLIDE);
     }
@@ -89,7 +92,7 @@ public final class ProgressPainter {
             int objectWidth = object == null ? 0 : Math.min(width, Math.max(1, Math.round(objectHeight * object.aspect())));
             double fraction = position(indeterminate, progress, seconds, design.speed, design.motion);
             int x = (int) Math.round(fraction * (width - objectWidth));
-            int edge = object == null ? (int) Math.round(fraction * width) : x + objectWidth / 2;
+            int edge = object == null ? (int) Math.round(fraction * width) : x + Math.round(objectWidth * TRAIL_TUCK);
             if (trail != null && design.trailLength > 0) {
                 Graphics2D t = (Graphics2D) g.create();
                 try {
