@@ -1,3 +1,4 @@
+import org.jetbrains.changelog.Changelog
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import java.util.zip.ZipFile
 import java.util.zip.ZipInputStream
@@ -6,10 +7,11 @@ import javax.xml.parsers.DocumentBuilderFactory
 plugins {
     java
     alias(libs.plugins.intellij.platform)
+    alias(libs.plugins.intellij.changelog)
 }
 
 group = "dev.anyprogressbar"
-version = "1.2.1"
+version = "1.3.0"
 
 repositories {
     mavenCentral()
@@ -39,13 +41,25 @@ tasks.withType<JavaCompile>().configureEach { options.release = 21 }
 tasks.processResources { if (!project.hasProperty("localBuild")) exclude("art/brand/**") }
 tasks.test { useJUnitPlatform(); systemProperty("java.awt.headless", "true") }
 
+changelog {
+    path = file("CHANGELOG.md").absolutePath
+    groups = emptyList() // CHANGELOG.md uses plain bullet lists, not Added/Fixed groups
+}
+
 intellijPlatform {
     pluginConfiguration {
         name = "Any Progress Bar"
+        // Marketplace change notes come from the CHANGELOG.md section matching the project version
+        changeNotes = provider {
+            changelog.renderItem(changelog.get(project.version.toString()), Changelog.OutputType.HTML)
+        }
         ideaVersion {
             sinceBuild = "261"
             untilBuild = provider { null }
         }
+    }
+    publishing {
+        token = providers.environmentVariable("PUBLISH_TOKEN")
     }
 }
 

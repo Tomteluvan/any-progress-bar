@@ -1,23 +1,12 @@
 <idea-plugin>
     <id>dev.anyprogressbar</id>
     <name>Any Progress Bar</name>
-    <vendor url="https://github.com/mikael-brostrom/any-progress-bar">Mikael Broström</vendor>
+    <vendor url="https://github.com/Tomteluvan/any-progress-bar">Mikael Broström</vendor>
     <description><![CDATA[
         Animal and Tung Tung Tung Sahur themed progress bars with a built-in design editor. Choose from the built-in
         presets or combine your own PNG, JPG and SVG object, trail and background
         images, colours and motion. Configure under Settings | Appearance &amp; Behavior | Any Progress Bar.
     ]]></description>
-    <change-notes><![CDATA[
-        <ul>
-            <li>New motion types: hop, spin, pulse, bob and ping-pong.</li>
-            <li>One shared animation timer for all bars; it stops when every bar is idle or hidden.</li>
-            <li>Very short bars (under 12 px) are drawn as a plain fill instead of unreadable artwork.</li>
-            <li>Raster images are cached per size; SVGs are capped at 5000 elements / 32 levels.</li>
-            <li>Export and import designs as shareable .apbdesign files.</li>
-            <li>A broken or missing image no longer disables the whole design; only that layer is skipped.</li>
-            <li>Background colour now has an IDE colour swatch and a "Use IDE colour" button.</li>
-        </ul>
-    ]]></change-notes>
     <depends>com.intellij.modules.platform</depends>
     <extensions defaultExtensionNs="com.intellij">
         <notificationGroup id="Any Progress Bar" displayType="BALLOON"/>

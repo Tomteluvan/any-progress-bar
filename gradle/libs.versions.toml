@@ -1,6 +1,7 @@
 [versions]
 intellij-platform = "2.19.0"
 jsvg = "1.6.1"
+changelog = "2.2.1"
 junit5 = "5.11.4"
 junit4 = "4.13.2"
 
@@ -12,3 +13,4 @@ junit4 = { module = "junit:junit", version.ref = "junit4" }
 
 [plugins]
 intellij-platform = { id = "org.jetbrains.intellij.platform", version.ref = "intellij-platform" }
+intellij-changelog = { id = "org.jetbrains.changelog", version.ref = "changelog" }

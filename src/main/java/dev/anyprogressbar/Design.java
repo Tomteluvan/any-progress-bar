@@ -78,7 +78,13 @@ public final class Design {
         var all = new java.util.ArrayList<>(List.of(
             themed("tung-night", "Tung Tung Sahur - Night", "tung-bat-up.svg", "sahur-moons.svg", "", "#1B1740", 40, 120, 220, Motion.WIGGLE),
             themed("tung-drum", "Tung Tung Sahur - Drumbeat", "tung-bat-forward.svg", "drum-rings.svg", "", "#4A2318", 40, 160, 240, Motion.BOUNCE),
-            themed("tung-bats", "Tung Tung Sahur - Bat squad", "tung-bat-shoulder.svg", "mini-bats.svg", "", "#3B2A5C", 40, 140, 260, Motion.WIGGLE)
+            themed("tung-bats", "Tung Tung Sahur - Bat squad", "tung-bat-shoulder.svg", "mini-bats.svg", "", "#3B2A5C", 40, 140, 260, Motion.WIGGLE),
+            themed("chair", "Chair & sawdust", "chair.svg", "sawdust.svg", "", "#2E2A26", 32, 100, 180, Motion.HOP),
+            themed("hamburger", "Hamburger & crumbs", "hamburger.svg", "crumbs.svg", "", "#33261F", 32, 110, 200, Motion.BOUNCE),
+            themed("fan", "Table fan & breeze", "fan.svg", "wind.svg", "", "#1F2F38", 32, 120, 220, Motion.SPIN),
+            themed("mug", "Coffee mug & steam", "mug.svg", "steam.svg", "", "#2B2724", 32, 90, 200, Motion.BOB),
+            themed("umbrella", "Umbrella & raindrops", "umbrella.svg", "raindrops.svg", "", "#222E3D", 32, 100, 200, Motion.WIGGLE),
+            themed("alarm-clock", "Alarm clock & notes", "alarm-clock.svg", "notes.svg", "", "#2A2A3A", 32, 100, 200, Motion.PULSE)
         ));
         all.addAll(optionalPresets());
         return all;
