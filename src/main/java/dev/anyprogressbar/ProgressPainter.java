@@ -85,8 +85,8 @@ public final class ProgressPainter {
             g.setColor(design.color(fallback));
             g.fillRect(0, 0, width, height);
             if (background != null) background.draw(g, 0, 0, width, height);
-            if (height < MIN_ARTWORK_HEIGHT) { paintPlain(g, width, height, progress, indeterminate, seconds); return; }
             if (!leftToRight) { g.translate(width, 0); g.scale(-1, 1); }
+            if (height < MIN_ARTWORK_HEIGHT) { paintPlain(g, width, height, progress, indeterminate, seconds); return; }
             double phase = seconds * design.speed / 100.0 * Math.PI * 2;
             int objectHeight = Math.min(design.size, height);
             int objectWidth = object == null ? 0 : Math.min(width, Math.max(1, Math.round(objectHeight * object.aspect())));

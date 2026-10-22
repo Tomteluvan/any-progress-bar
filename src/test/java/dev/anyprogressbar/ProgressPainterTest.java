@@ -76,6 +76,23 @@ class ProgressPainterTest {
         assertEquals(ltr.getRGB(75, 16), rtl.getRGB(244, 16));
     }
 
+    @Test void rightToLeftMirrorsTinyPlainBars() throws IOException {
+        ProgressPainter painter = new ProgressPainter(new Design());
+        BufferedImage ltr = renderTiny(painter, true);
+        BufferedImage rtl = renderTiny(painter, false);
+        assertNotEquals(ltr.getRGB(10, 4), ltr.getRGB(310, 4));
+        assertEquals(ltr.getRGB(10, 4), rtl.getRGB(309, 4));
+        assertEquals(ltr.getRGB(310, 4), rtl.getRGB(9, 4));
+    }
+
+    private static BufferedImage renderTiny(ProgressPainter painter, boolean leftToRight) {
+        BufferedImage image = new BufferedImage(320, 8, BufferedImage.TYPE_INT_ARGB);
+        var g = image.createGraphics();
+        try { painter.paint(g, 320, 8, 0.25, false, 0, Color.DARK_GRAY, leftToRight); }
+        finally { g.dispose(); }
+        return image;
+    }
+
     @Test void importsAreDeduplicatedAndIndependentOfOriginals() throws IOException {
         for (String extension : new String[]{"png", "jpg"}) {
             Path original = temp.resolve("source." + extension);
