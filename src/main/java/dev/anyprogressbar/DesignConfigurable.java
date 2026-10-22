@@ -6,6 +6,7 @@ import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.ui.ColorPanel;
 import com.intellij.ui.DocumentAdapter;
+import com.intellij.ui.SimpleListCellRenderer;
 import com.intellij.util.ui.JBUI;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -113,10 +114,11 @@ public final class DesignConfigurable implements Configurable {
         speed = new JSpinner(new SpinnerNumberModel(100, 10, 400, 10));
         trailLength = new JSpinner(new SpinnerNumberModel(160, 0, 600, 10));
         motion = new JComboBox<>(Design.Motion.values());
-        row(editor, 0, "Name", name);
-        row(editor, 1, "Object image", imageRow(object, value -> selected().objectImage = value));
-        row(editor, 2, "Trail image", imageRow(trail, value -> selected().trailImage = value));
-        row(editor, 3, "Background image", imageRow(background, value -> selected().backgroundImage = value));
+        motion.setRenderer(SimpleListCellRenderer.create("", Design.Motion::label));
+        row(editor, 0, "Name", 'N', name, name);
+        row(editor, 1, "Object image", 'O', imageRow("object image", object, value -> selected().objectImage = value), object);
+        row(editor, 2, "Trail image", 'T', imageRow("trail image", trail, value -> selected().trailImage = value), trail);
+        row(editor, 3, "Background image", 'B', imageRow("background image", background, value -> selected().backgroundImage = value), background);
         JPanel colors = new JPanel(new BorderLayout(4, 0));
         colors.add(color);
         swatch = new ColorPanel();
@@ -128,16 +130,16 @@ public final class DesignConfigurable implements Configurable {
         colorButtons.add(swatch);
         colorButtons.add(button("Use IDE colour", () -> color.setText("")));
         colors.add(colorButtons, BorderLayout.EAST);
-        row(editor, 4, "Background colour", colors);
-        row(editor, 5, "Object size (px, 8-64)", size);
-        row(editor, 6, "Speed (%, 10-400)", speed);
-        row(editor, 7, "Trail length (px, 0-600)", trailLength);
+        row(editor, 4, "Background colour", 'C', colors, color);
+        row(editor, 5, "Object size (px, 8-64)", 'S', size, size);
+        row(editor, 6, "Speed (%, 10-400)", 'P', speed, speed);
+        row(editor, 7, "Trail length (px, 0-600)", 'L', trailLength, trailLength);
         size.setToolTipText("Height of the object in pixels (8-64); capped to the bar height.");
         speed.setToolTipText("Percent. 100 = one lap every 4 seconds for indeterminate bars (10-400).");
         trailLength.setToolTipText("Pixels of trail drawn behind the object (0-600); 0 hides the trail.");
         motion.setToolTipText("How the object moves. Ping-pong only changes indeterminate bars.");
         color.setToolTipText("#RRGGBB, or empty to use the IDE colour.");
-        row(editor, 8, "Motion", motion);
+        row(editor, 8, "Motion", 'M', motion, motion);
         row(editor, 9, "", new JLabel("Clear any image to omit it. Empty colour uses the IDE colour."));
         row(editor, 10, "", new JLabel("Background images overlay the colour. PNG, JPG and static SVG supported."));
         error = new JLabel(" ");
@@ -147,7 +149,7 @@ public final class DesignConfigurable implements Configurable {
         row(editor, 12, "Live preview", preview);
         JSlider progress = new JSlider(0, 100, 65);
         progress.addChangeListener(e -> { preview.progress = progress.getValue() / 100.0; preview.repaint(); });
-        row(editor, 13, "Determinate progress", progress);
+        row(editor, 13, "Determinate progress", 'D', progress, progress);
         GridBagConstraints filler = new GridBagConstraints();
         filler.gridy = 14;
         filler.weighty = 1;
@@ -178,11 +180,11 @@ public final class DesignConfigurable implements Configurable {
         return field;
     }
 
-    private JPanel imageRow(JTextField field, Consumer<String> assign) {
+    private JPanel imageRow(String layer, JTextField field, Consumer<String> assign) {
         JPanel row = new JPanel(new BorderLayout(4, 0));
         row.add(field);
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
-        buttons.add(button("Browse", () -> {
+        JButton browse = button("Browse", () -> {
             JFileChooser chooser = new JFileChooser();
             chooser.setFileFilter(new FileNameExtensionFilter("Images (PNG, JPG, SVG)", "png", "jpg", "jpeg", "svg"));
             if (chooser.showOpenDialog(root) != JFileChooser.APPROVE_OPTION) return;
@@ -196,18 +198,30 @@ public final class DesignConfigurable implements Configurable {
             } catch (IOException | IllegalArgumentException e) {
                 Messages.showErrorDialog(root, e.getMessage(), "Could not import image");
             }
-        }));
-        buttons.add(button("Clear", () -> { assign.accept(""); field.setText(""); changed(); }));
+        });
+        browse.getAccessibleContext().setAccessibleName("Browse for " + layer);
+        JButton clear = button("Clear", () -> { assign.accept(""); field.setText(""); changed(); });
+        clear.getAccessibleContext().setAccessibleName("Clear " + layer);
+        buttons.add(browse);
+        buttons.add(clear);
         row.add(buttons, BorderLayout.EAST);
         return row;
     }
 
     private static void row(JPanel panel, int index, String label, JComponent component) {
+        row(panel, index, label, 0, component, null);
+    }
+
+    /** Adds a labelled row; a non-null {@code target} is the control the label (and its mnemonic) activates. */
+    private static void row(JPanel panel, int index, String label, int mnemonic, JComponent component, JComponent target) {
         GridBagConstraints c = new GridBagConstraints();
         c.gridy = index;
         c.anchor = GridBagConstraints.WEST;
         c.insets = JBUI.insets(4);
-        panel.add(new JLabel(label), c);
+        JLabel text = new JLabel(label);
+        if (mnemonic != 0) text.setDisplayedMnemonic(mnemonic);
+        if (target != null) text.setLabelFor(target);
+        panel.add(text, c);
         c.gridx = 1;
         c.weightx = 1;
         c.fill = GridBagConstraints.HORIZONTAL;
