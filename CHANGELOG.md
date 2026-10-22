@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
 - Five new original presets: Snail mail, Cowsmic encounter, Ramen racer, The frog of compile and Disco duck, each with matching artwork, trail and motion. Existing libraries receive them once without changing custom designs, the active selection or previously deleted presets.
 - Exporting a design no longer overwrites an existing file if the export fails.
 - Importing a design pack rejects pack formats this version cannot read, with a clear message.
 - Right-to-left bars shorter than 12 px are now mirrored like taller ones.
 - Upgrading no longer brings back themed presets you deleted earlier; only presets added since your saved version are added.
 - Motions show readable names (for example "Ping-pong"), and the editor's labels, mnemonics and Browse/Clear buttons are exposed properly to screen readers.
+- Releases now publish the exact archive that CI built and verified, GitHub Actions are pinned to commit SHAs, and Dependabot keeps them up to date.
 
 ## 1.3.0
 - Seven new presets: chair, hamburger, table fan, coffee mug, umbrella, alarm clock and a smiley toggle, each with its own trail.
