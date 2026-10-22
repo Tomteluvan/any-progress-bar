@@ -42,12 +42,28 @@ public final class ProgressSettings implements PersistentStateComponent<Progress
             }
         }
 
+        /** Adds themed presets introduced since {@link #presetVersion}; presets from earlier versions stay deleted if removed. */
+        public void migratePresets() {
+            if (presetVersion >= PRESET_VERSION) return;
+            var ids = new HashSet<String>();
+            for (Design design : designs) ids.add(design.id);
+            for (Design preset : Design.themePresetsAddedAfter(presetVersion)) if (!ids.contains(preset.id)) designs.add(preset);
+            presetVersion = PRESET_VERSION;
+        }
+
         public Design selected() {
             return designs.stream().filter(d -> d.id.equals(selectedId)).findFirst().orElseThrow();
         }
     }
 
-    private volatile Data data = new Data();
+    private volatile Data data = fresh();
+
+    /** Settings for a new install already hold every current preset, so none are treated as missing on a later upgrade. */
+    private static Data fresh() {
+        Data fresh = new Data();
+        fresh.presetVersion = Data.PRESET_VERSION;
+        return fresh;
+    }
     public static ProgressSettings getInstance() {
         return ApplicationManager.getApplication().getService(ProgressSettings.class);
     }
@@ -55,11 +71,6 @@ public final class ProgressSettings implements PersistentStateComponent<Progress
     @Override public void loadState(@NotNull Data state) {
         state.validate();
         data = state.copy();
-        if (data.presetVersion < Data.PRESET_VERSION) {
-            var ids = new HashSet<String>();
-            for (Design design : data.designs) ids.add(design.id);
-            for (Design preset : Design.themePresets()) if (!ids.contains(preset.id)) data.designs.add(preset);
-            data.presetVersion = Data.PRESET_VERSION;
-        }
+        data.migratePresets();
     }
 }

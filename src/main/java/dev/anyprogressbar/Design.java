@@ -8,7 +8,15 @@ public final class Design {
     private static final com.intellij.openapi.diagnostic.Logger LOG =
         com.intellij.openapi.diagnostic.Logger.getInstance(Design.class);
 
-    public enum Motion { GLIDE, BOUNCE, WIGGLE, HOP, SPIN, PULSE, BOB, PING_PONG }
+    public enum Motion {
+        GLIDE("Glide"), BOUNCE("Bounce"), WIGGLE("Wiggle"), HOP("Hop"), SPIN("Spin"), PULSE("Pulse"), BOB("Bob"),
+        PING_PONG("Ping-pong");
+
+        private final String label;
+        Motion(String label) { this.label = label; }
+        /** Name shown in the editor; the constant's own name is what gets saved. */
+        public String label() { return label; }
+    }
     public String id = UUID.randomUUID().toString();
     public String name = "My design";
     public String objectImage = "";
@@ -68,6 +76,16 @@ public final class Design {
             preset("rabbit", "Rabbit & bubbles", "bubbles", "#23323C", Motion.BOUNCE),
             preset("penguin", "Penguin & flowers", "flowers", "#29313D", Motion.WIGGLE)
         );
+    }
+
+    /** Preset version in which a themed preset first shipped; see {@link ProgressSettings.Data#PRESET_VERSION}. */
+    static int introducedIn(Design preset) {
+        return preset.id.startsWith("preset-tung-") ? 2 : 3;
+    }
+
+    /** Themed presets that shipped after {@code version}, so upgrades never restore ones the user already had and deleted. */
+    public static List<Design> themePresetsAddedAfter(int version) {
+        return themePresets().stream().filter(p -> introducedIn(p) > version).toList();
     }
 
     /**
