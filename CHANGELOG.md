@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Five new original presets: Snail mail, Cowsmic encounter, Ramen racer, The frog of compile and Disco duck, each with matching artwork, trail and motion. Existing libraries receive them once without changing custom designs, the active selection or previously deleted presets.
 - Exporting a design no longer overwrites an existing file if the export fails.
 - Importing a design pack rejects pack formats this version cannot read, with a clear message.
 - Right-to-left bars shorter than 12 px are now mirrored like taller ones.

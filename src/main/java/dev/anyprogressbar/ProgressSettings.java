@@ -15,7 +15,7 @@ import org.jetbrains.annotations.NotNull;
 @State(name = "AnyProgressBar", storages = @Storage("any-progress-bar.xml"))
 public final class ProgressSettings implements PersistentStateComponent<ProgressSettings.Data> {
     public static final class Data {
-        public static final int PRESET_VERSION = 3;
+        public static final int PRESET_VERSION = 4;
         public boolean enabled = true;
         public int presetVersion = 0; // 0 = saved before theme presets existed
         public String selectedId = "preset-cat";

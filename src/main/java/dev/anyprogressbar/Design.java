@@ -80,7 +80,10 @@ public final class Design {
 
     /** Preset version in which a themed preset first shipped; see {@link ProgressSettings.Data#PRESET_VERSION}. */
     static int introducedIn(Design preset) {
-        return preset.id.startsWith("preset-tung-") ? 2 : 3;
+        return switch (preset.id) {
+            case "preset-snail-mail", "preset-cowsmic", "preset-ramen-racer", "preset-frog-wizard", "preset-disco-duck" -> 4;
+            default -> preset.id.startsWith("preset-tung-") ? 2 : 3;
+        };
     }
 
     /** Themed presets that shipped after {@code version}, so upgrades never restore ones the user already had and deleted. */
@@ -103,7 +106,12 @@ public final class Design {
             themed("mug", "Coffee mug & steam", "mug.svg", "steam.svg", "", "#2B2724", 32, 90, 200, Motion.BOB),
             themed("umbrella", "Umbrella & raindrops", "umbrella.svg", "raindrops.svg", "", "#222E3D", 32, 100, 200, Motion.WIGGLE),
             themed("alarm-clock", "Alarm clock & notes", "alarm-clock.svg", "notes.svg", "", "#2A2A3A", 32, 100, 200, Motion.PULSE),
-            themed("smiley-toggle", "Smiley toggle", "smiley-toggle.svg", "toggle-fill.svg", "", "#383D5E", 32, 100, 600, Motion.GLIDE)
+            themed("smiley-toggle", "Smiley toggle", "smiley-toggle.svg", "toggle-fill.svg", "", "#383D5E", 32, 100, 600, Motion.GLIDE),
+            themed("snail-mail", "Snail mail", "snail-mail.svg", "postage.svg", "", "#243D36", 60, 90, 540, Motion.GLIDE),
+            themed("cowsmic", "Cowsmic encounter", "cowsmic.svg", "milky-way.svg", "", "#2C2947", 60, 90, 540, Motion.BOB),
+            themed("ramen-racer", "Ramen racer", "ramen-racer.svg", "noodle-trail.svg", "", "#442E2C", 60, 90, 540, Motion.WIGGLE),
+            themed("frog-wizard", "The frog of compile", "frog-wizard.svg", "pond-magic.svg", "", "#263D35", 60, 90, 540, Motion.BOB),
+            themed("disco-duck", "Disco duck", "disco-duck.svg", "disco-trail.svg", "", "#3B2D48", 60, 90, 540, Motion.BOUNCE)
         ));
         all.addAll(optionalPresets());
         return all;

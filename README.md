@@ -5,7 +5,7 @@
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/Tomteluvan)
 
 An IntelliJ IDEA plugin that replaces the standard progress bar with animated,
-themeable ones. It ships with fifteen presets (animal, everyday-object and Tung Tung Sahur themes)
+themeable ones. It ships with twenty presets (animals, everyday objects, Tung Tung Sahur and playful character themes)
 and includes an in-IDE editor for creating your own designs from PNG, JPG or SVG images.
 
 ## Presets
@@ -43,6 +43,16 @@ and includes an in-IDE editor for creating your own designs from PNG, JPG or SVG
 | Tung Tung Sahur - Bat squad | log character, bat on shoulder | mini bats |
 
 The Tung Tung Tung Sahur character is an original drawing of an internet meme character.
+
+**Worth the wait**
+
+| Theme | Object | Trail | Motion |
+|---|---|---|---|
+| Snail mail | Envelope-carrying snail | Letters and postage stamps | Glide |
+| Cowsmic encounter | UFO abducting a cow | Stars and milk cartons | Bob |
+| Ramen racer | Noodle bowl on wheels | Noodles and scallions | Wiggle |
+| The frog of compile | Frog wizard riding a broom | Lily pads and magic sparkles | Bob |
+| Disco duck | Duck on roller skates | Music notes and dance-floor sparkles | Bounce |
 
 ## Installation
 
