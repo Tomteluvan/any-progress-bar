@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+- Exporting a design no longer overwrites an existing file if the export fails.
+- Importing a design pack rejects pack formats this version cannot read, with a clear message.
+- Right-to-left bars shorter than 12 px are now mirrored like taller ones.
+- Upgrading no longer brings back themed presets you deleted earlier; only presets added since your saved version are added.
+- Motions show readable names (for example "Ping-pong"), and the editor's labels, mnemonics and Browse/Clear buttons are exposed properly to screen readers.
+
 ## 1.3.0
 - Seven new presets: chair, hamburger, table fan, coffee mug, umbrella, alarm clock and a smiley toggle, each with its own trail.
 - The trail now ends at the back of the object instead of its centre, so it no longer runs under the whole object.
