@@ -197,4 +197,35 @@ class DesignPackTest {
         }
         assertEquals(d.name, DesignPack.importFrom(out, assets()).name);
     }
+
+    @Test void failedExportLeavesAnExistingFileUntouched() throws IOException {
+        Path out = Files.writeString(temp.resolve("keep.apbdesign"), "previous contents");
+        Design missing = new Design();
+        missing.objectImage = temp.resolve("gone.png").toString();
+        assertThrows(IOException.class, () -> DesignPack.export(missing, out));
+        assertEquals("previous contents", Files.readString(out));
+        try (Stream<Path> files = Files.list(temp)) {
+            assertTrue(files.noneMatch(f -> f.getFileName().toString().endsWith(".tmp")));
+        }
+    }
+
+    @Test void exportReplacesAnExistingFileOnSuccess() throws IOException {
+        Path out = Files.writeString(temp.resolve("replace.apbdesign"), "previous contents");
+        Design d = new Design();
+        d.name = "New";
+        DesignPack.export(d, out);
+        assertEquals("New", DesignPack.importFrom(out, assets()).name);
+    }
+
+    @Test void acceptsCurrentAndUnversionedPacks() throws IOException {
+        assertEquals("A", DesignPack.importFrom(pack(entries("format=1\nname=A\n")), assets()).name);
+        assertEquals("B", DesignPack.importFrom(pack(entries("name=B\n")), assets()).name);
+    }
+
+    @Test void rejectsUnsupportedPackFormats() throws IOException {
+        var newer = assertThrows(IOException.class, () -> DesignPack.importFrom(pack(entries("format=999\nname=X\n")), assets()));
+        assertTrue(newer.getMessage().contains("format 999"));
+        assertThrows(IOException.class, () -> DesignPack.importFrom(pack(entries("format=0\nname=X\n")), assets()));
+        assertThrows(IOException.class, () -> DesignPack.importFrom(pack(entries("format=abc\nname=X\n")), assets()));
+    }
 }

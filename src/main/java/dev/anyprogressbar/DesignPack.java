@@ -5,8 +5,10 @@ import java.io.InputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Locale;
 import java.util.Properties;
 import java.util.UUID;
@@ -23,14 +25,29 @@ public final class DesignPack {
     public static final String EXTENSION = "apbdesign";
     private static final String DESCRIPTOR = "design.properties";
     private static final String[] LAYERS = {"object", "trail", "background"};
+    /** Current pack format; packs without a {@code format} entry predate versioning and are read as format 1. */
+    private static final int FORMAT = 1;
     private static final long MAX_ENTRY_BYTES = 10L * 1024 * 1024;
 
     private DesignPack() {}
 
+    /** Writes the pack to a temporary sibling first so a failed export never damages an existing file at {@code target}. */
     public static void export(Design design, Path target) throws IOException {
         design.validate();
+        Path temp = Files.createTempFile(target.toAbsolutePath().getParent(), ".apb-export", ".tmp");
+        try {
+            write(design, temp);
+            try {
+                Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally { Files.deleteIfExists(temp); }
+    }
+
+    private static void write(Design design, Path target) throws IOException {
         Properties props = new Properties();
-        props.setProperty("format", "1");
+        props.setProperty("format", Integer.toString(FORMAT));
         props.setProperty("name", design.name);
         props.setProperty("backgroundColor", design.backgroundColor);
         props.setProperty("size", Integer.toString(design.size));
@@ -80,6 +97,7 @@ public final class DesignPack {
             throw new IOException("Not a valid design file.", e);
         }
         if (props == null) throw new IOException("Not a design file: " + DESCRIPTOR + " is missing.");
+        checkFormat(props.getProperty("format", "1"));
         try {
             Design design = new Design();
             design.id = UUID.randomUUID().toString();
@@ -98,6 +116,17 @@ public final class DesignPack {
         } catch (IllegalArgumentException e) {
             throw new IOException("Invalid design file: " + e.getMessage(), e);
         }
+    }
+
+    private static void checkFormat(String value) throws IOException {
+        int format;
+        try { format = Integer.parseInt(value.trim()); }
+        catch (NumberFormatException e) { throw new IOException("Invalid design file: unreadable format \"" + value + "\".", e); }
+        if (format > FORMAT) {
+            throw new IOException("This design file uses format " + format + ", which this version of Any Progress Bar "
+                + "does not support. Update the plugin to import it.");
+        }
+        if (format < 1) throw new IOException("Invalid design file: unsupported format " + format + ".");
     }
 
     private static String resolve(String value, java.util.Map<String, byte[]> images, Path assets) throws IOException {
