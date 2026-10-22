@@ -66,6 +66,14 @@ intellijPlatform {
     }
 }
 
+// CI publishes the archive its build job already verified: pass -PpluginArchive=<zip> (with -x buildPlugin) to upload
+// that exact file instead of rebuilding it.
+providers.gradleProperty("pluginArchive").orNull?.let { verified ->
+    tasks.named<org.jetbrains.intellij.platform.gradle.tasks.PublishPluginTask>("publishPlugin") {
+        archiveFiles.setFrom(layout.projectDirectory.file(verified))
+    }
+}
+
 val pluginArchive = tasks.named<Zip>("buildPlugin").flatMap { it.archiveFile }
 val pluginJarName = "/${project.name}-${project.version}.jar"
 

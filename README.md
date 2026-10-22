@@ -155,16 +155,26 @@ local build.
 
 ## Releasing
 
-Releases are published by GitHub Actions.
+Releases are published by the `release` job in `.github/workflows/ci.yml`; there is no separate
+tag-triggered workflow.
 
-1. Update `version` in `build.gradle.kts` and add an entry to `CHANGELOG.md`.
+1. Update `version` in `build.gradle.kts` and add a matching section to `CHANGELOG.md`
+   (it becomes the Marketplace change notes).
 2. Push to `main`.
-3. When the CI build passes and no release exists for that version yet, the workflow
-   creates the `v<version>` tag and publishes a GitHub release with the plugin zip attached.
+3. When the build job passes and no GitHub release exists for that version yet, the release job
+   takes the plugin archive that the build job tested and verified (it does not rebuild it) and:
+   1. uploads it to the JetBrains Marketplace, using the `PUBLISH_TOKEN` repository secret, then
+   2. creates the `v<version>` tag and a GitHub release with the zip and a `SHA256SUMS` file attached.
 
-Pushes that do not change the version do not create a release. A release can also be
-created manually by pushing a `v<version>` tag, which runs the **Release** workflow; the
-tag must match the project version.
+Pushes that do not change the version do not create a release.
+
+If the Marketplace upload fails, nothing is released and the next push retries. If the upload
+succeeds but creating the GitHub release fails, a retry would upload the same version to the
+Marketplace again and be rejected. In that case create the release by hand from the verified
+archive (`gh release create v<version> <zip> --target <commit>`) instead of re-running the job.
+
+The plugin is not signed yet; signing would need a certificate chain and private key added as
+repository secrets and the `signPlugin` task configured in `build.gradle.kts`.
 
 ## Project layout
 
