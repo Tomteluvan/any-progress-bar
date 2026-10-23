@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.1
+- Documentation only: refreshed the preset preview image in the README. Patch versions are not published to the Marketplace.
+
 ## 1.4.0
 - Five new original presets: Snail mail, Cowsmic encounter, Ramen racer, The frog of compile and Disco duck, each with matching artwork, trail and motion. Existing libraries receive them once without changing custom designs, the active selection or previously deleted presets.
 - Exporting a design no longer overwrites an existing file if the export fails.
