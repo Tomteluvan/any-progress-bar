@@ -18,6 +18,8 @@ import java.util.Locale;
 import javax.imageio.ImageIO;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
+
+import com.intellij.util.ui.ImageUtil;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
@@ -166,7 +168,7 @@ public final class Artwork {
         if (width <= 0 || height <= 0 || (width == raster.getWidth() && height == raster.getHeight())) return raster;
         BufferedImage cached = scaled;
         if (cached != null && cached.getWidth() == width && cached.getHeight() == height) return cached;
-        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage result = ImageUtil.createImage(width, height, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = result.createGraphics();
         try {
             g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);

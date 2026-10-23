@@ -10,6 +10,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Window;
+import java.util.Objects;
 import javax.swing.JProgressBar;
 import javax.swing.UIManager;
 
@@ -44,6 +45,7 @@ public final class ProgressInstallation implements Disposable {
         if (!CUSTOM.equals(current)) original = current;
         painter = null;
         ProgressSettings.Data data = ProgressSettings.getInstance().getState();
+        Objects.requireNonNull(data);
         if (data.enabled) {
             try {
                 painter = ProgressPainter.lenient(data.selected());

@@ -62,7 +62,7 @@ public final class ProgressPainter {
     }
 
     public static double position(boolean indeterminate, double progress, double seconds, int speed, Design.Motion motion) {
-        if (!indeterminate) return Math.max(0, Math.min(1, progress));
+        if (!indeterminate) return Math.clamp(progress, 0, 1);
         double lap = seconds * speed / 400.0;
         if (motion != Design.Motion.PING_PONG) return lap % 1.0;
         double t = lap % 2.0;
@@ -89,7 +89,7 @@ public final class ProgressPainter {
             if (height < MIN_ARTWORK_HEIGHT) { paintPlain(g, width, height, progress, indeterminate, seconds); return; }
             double phase = seconds * design.speed / 100.0 * Math.PI * 2;
             int objectHeight = Math.min(design.size, height);
-            int objectWidth = object == null ? 0 : Math.min(width, Math.max(1, Math.round(objectHeight * object.aspect())));
+            int objectWidth = object == null ? 0 : Math.clamp(Math.round(objectHeight * object.aspect()), 1, width);
             double fraction = position(indeterminate, progress, seconds, design.speed, design.motion);
             int x = (int) Math.round(fraction * (width - objectWidth));
             int edge = object == null ? (int) Math.round(fraction * width) : x + Math.round(objectWidth * TRAIL_TUCK);

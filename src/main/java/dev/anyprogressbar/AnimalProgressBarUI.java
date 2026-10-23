@@ -1,5 +1,7 @@
 package dev.anyprogressbar;
 
+import com.intellij.ui.JBColor;
+
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -77,7 +79,7 @@ public final class AnimalProgressBarUI extends BasicProgressBarUI implements Ani
             Color background = progressBar.getBackground();
             painter.paint(g, width, height, progressBar.getPercentComplete(), indeterminate,
                 AnimationClock.getInstance().seconds(),
-                background == null ? Color.DARK_GRAY : background,
+                background == null ? JBColor.DARK_GRAY : background,
                 progressBar.getComponentOrientation().isLeftToRight());
         } finally { g.dispose(); }
         if (progressBar.isStringPainted() && width > 0 && height > 0) {

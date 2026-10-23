@@ -3,10 +3,13 @@ package dev.anyprogressbar;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
+import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.ui.ColorPanel;
 import com.intellij.ui.DocumentAdapter;
 import com.intellij.ui.SimpleListCellRenderer;
+import com.intellij.ui.components.JBList;
+import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -19,6 +22,7 @@ import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
 import javax.swing.*;
@@ -57,7 +61,7 @@ public final class DesignConfigurable implements Configurable {
         root.add(enabled, BorderLayout.NORTH);
 
         model = new DefaultListModel<>();
-        designs = new JList<>(model);
+        designs = new JBList<>(model);
         designs.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         designs.addListSelectionListener(e -> {
             if (!updating && !e.getValueIsAdjusting() && selected() != null) {
@@ -67,7 +71,7 @@ public final class DesignConfigurable implements Configurable {
             }
         });
         JPanel library = new JPanel(new BorderLayout(6, 6));
-        JScrollPane scroll = new JScrollPane(designs);
+        JBScrollPane scroll = new JBScrollPane(designs);
         scroll.setPreferredSize(JBUI.size(200, 300));
         library.add(scroll);
         JPanel actions = new JPanel(new GridLayout(0, 1, 4, 4));
@@ -113,8 +117,8 @@ public final class DesignConfigurable implements Configurable {
         size = new JSpinner(new SpinnerNumberModel(24, 8, 64, 1));
         speed = new JSpinner(new SpinnerNumberModel(100, 10, 400, 10));
         trailLength = new JSpinner(new SpinnerNumberModel(160, 0, 600, 10));
-        motion = new JComboBox<>(Design.Motion.values());
-        motion.setRenderer(SimpleListCellRenderer.create("", Design.Motion::label));
+        motion = new ComboBox<>(Design.Motion.values());
+        motion.setRenderer(SimpleListCellRenderer.create((label, value, index) -> label.setText(value == null ? "" : value.label())));
         row(editor, 0, "Name", 'N', name, name);
         row(editor, 1, "Object image", 'O', imageRow("object image", object, value -> selected().objectImage = value), object);
         row(editor, 2, "Trail image", 'T', imageRow("trail image", trail, value -> selected().trailImage = value), trail);
@@ -196,7 +200,7 @@ public final class DesignConfigurable implements Configurable {
                 field.setToolTipText(reference);
                 changed();
             } catch (IOException | IllegalArgumentException e) {
-                Messages.showErrorDialog(root, e.getMessage(), "Could not import image");
+                Messages.showErrorDialog(root, e.getMessage(), "Could Not Import Image");
             }
         });
         browse.getAccessibleContext().setAccessibleName("Browse for " + layer);
@@ -276,7 +280,7 @@ public final class DesignConfigurable implements Configurable {
             DesignPack.export(design, target);
             Messages.showInfoMessage(root, "Exported to " + target, getDisplayName());
         } catch (IOException | IllegalArgumentException e) {
-            Messages.showErrorDialog(root, e.getMessage(), "Could not export design");
+            Messages.showErrorDialog(root, e.getMessage(), "Could Not Export Design");
         }
     }
 
@@ -288,7 +292,7 @@ public final class DesignConfigurable implements Configurable {
             add(DesignPack.importFrom(chooser.getSelectedFile().toPath(),
                 Path.of(PathManager.getConfigPath(), "any-progress-bar", "assets")));
         } catch (IOException | IllegalArgumentException e) {
-            Messages.showErrorDialog(root, e.getMessage(), "Could not import design");
+            Messages.showErrorDialog(root, e.getMessage(), "Could Not Import Design");
         }
     }
 
@@ -351,7 +355,7 @@ public final class DesignConfigurable implements Configurable {
 
     @Override public void reset() {
         if (root == null) return;
-        draft = ProgressSettings.getInstance().getState().copy();
+        draft = Objects.requireNonNull(ProgressSettings.getInstance().getState()).copy();
         enabled.setSelected(draft.enabled);
         populate();
         dirty = false;
