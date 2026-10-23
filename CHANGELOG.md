@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.2
+- Documentation only: the README preset tables are now collapsed by default. Patch versions are not published to the Marketplace.
+
 ## 1.4.1
 - Documentation only: refreshed the preset preview image in the README. Patch versions are not published to the Marketplace.
 

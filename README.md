@@ -12,6 +12,9 @@ and includes an in-IDE editor for creating your own designs from PNG, JPG or SVG
 
 ![Preview of the built-in themes](docs/theme-previews.png)
 
+<details>
+<summary>Show preset details (objects, trails and motions)</summary>
+
 **Animals**
 
 | Animal | Trail | Motion |
@@ -53,6 +56,8 @@ The Tung Tung Tung Sahur character is an original drawing of an internet meme ch
 | Ramen racer | Noodle bowl on wheels | Noodles and scallions | Wiggle |
 | The frog of compile | Frog wizard riding a broom | Lily pads and magic sparkles | Bob |
 | Disco duck | Duck on roller skates | Music notes and dance-floor sparkles | Bounce |
+
+</details>
 
 ## Installation
 
