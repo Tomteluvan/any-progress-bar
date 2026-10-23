@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.0
+- Internal: replaced platform APIs scheduled for removal (the combo box renderer and image creation) and applied IDE inspection fixes, so the plugin keeps working on upcoming IDE versions.
+
 ## 1.4.2
 - Documentation only: the README preset tables are now collapsed by default. Patch versions are not published to the Marketplace.
 
