@@ -30,7 +30,8 @@ jobs:
   # After a green push to main, publish when build.gradle.kts has a version that has no GitHub release yet:
   # first to the JetBrains Marketplace, then as a GitHub release. Both publish the plugin archive built and verified
   # by the build job (downloaded as an artifact), not a fresh rebuild. Bump `version` (and add a matching section to
-  # CHANGELOG.md) to ship; pushes that keep the same version are skipped. The Marketplace upload comes first so a
+  # CHANGELOG.md) to ship; pushes that keep the same version are skipped, and so are patch versions (x.y.Z with Z above 0):
+  # they run the normal build and verification but are never published. The Marketplace upload comes first so a
   # failed upload leaves no release behind and the next push retries. The tag is created by `gh release create`.
   release:
     needs: build
@@ -56,6 +57,12 @@ jobs:
         run: |
           version=$(sed -n 's/^version = "\(.*\)"/\1/p' build.gradle.kts | head -n1)
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          patch=$(echo "$version" | cut -d. -f3 | sed 's/[^0-9].*//')
+          if [ "${patch:-0}" != "0" ]; then
+            echo "Version $version is a patch bump; only minor and major versions are released."
+            echo "new=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           archive="dist/any-progress-bar-$version.zip"
           test -f "$archive" || { echo "Verified archive $archive is missing."; exit 1; }
           echo "archive=$archive" >> "$GITHUB_OUTPUT"

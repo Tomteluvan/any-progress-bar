@@ -176,7 +176,9 @@ tag-triggered workflow.
    1. uploads it to the JetBrains Marketplace, using the `PUBLISH_TOKEN` repository secret, then
    2. creates the `v<version>` tag and a GitHub release with the zip and a `SHA256SUMS` file attached.
 
-Pushes that do not change the version do not create a release.
+Pushes that do not change the version do not create a release, and neither do patch versions
+(`x.y.z` with `z` above 0, for example documentation-only updates): they run the normal build
+and verification but are never published. Only minor and major versions (`x.y.0`) are released.
 
 If the Marketplace upload fails, nothing is released and the next push retries. If the upload
 succeeds but creating the GitHub release fails, a retry would upload the same version to the
