@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.1
+- Internal: updated build dependencies (JUnit 6, Gradle 9.8.2, changelog plugin) and the GitHub Actions used by CI. Patch versions are not published to the Marketplace.
+
 ## 1.5.0
 - Internal: replaced platform APIs scheduled for removal (the combo box renderer and image creation) and applied IDE inspection fixes, so the plugin keeps working on upcoming IDE versions.
 
