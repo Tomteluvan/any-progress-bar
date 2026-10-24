@@ -28,11 +28,11 @@ jobs:
           path: build/distributions/*.zip
 
   # After a green push to main, publish when build.gradle.kts has a version that has no GitHub release yet:
-  # first to the JetBrains Marketplace, then as a GitHub release. Both publish the plugin archive built and verified
+  # first as a GitHub release, then to the JetBrains Marketplace. Both publish the plugin archive built and verified
   # by the build job (downloaded as an artifact), not a fresh rebuild. Bump `version` (and add a matching section to
   # CHANGELOG.md) to ship; pushes that keep the same version are skipped, and so are patch versions (x.y.Z with Z above 0):
-  # they run the normal build and verification but are never published. The Marketplace upload comes first so a
-  # failed upload leaves no release behind and the next push retries. The tag is created by `gh release create`.
+  # they run the normal build and verification but are never published. The GitHub release comes first so a
+  # failed release never leaves a Marketplace version without one. The tag is created by `gh release create`.
   release:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -72,12 +72,6 @@ jobs:
           else
             echo "new=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Publish to JetBrains Marketplace
-        if: steps.version.outputs.new == 'true'
-        env:
-          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-          ARCHIVE: ${{ steps.version.outputs.archive }}
-        run: ./gradlew publishPlugin -PpluginArchive="$ARCHIVE" -x buildPlugin
       - name: Create GitHub release
         if: steps.version.outputs.new == 'true'
         env:
@@ -88,3 +82,9 @@ jobs:
           (cd dist && sha256sum "$(basename "$ARCHIVE")" > SHA256SUMS)
           gh release create "$TAG" "$ARCHIVE" dist/SHA256SUMS \
             --target "$GITHUB_SHA" --title "$TAG" --generate-notes
+      - name: Publish to JetBrains Marketplace
+        if: steps.version.outputs.new == 'true'
+        env:
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          ARCHIVE: ${{ steps.version.outputs.archive }}
+        run: ./gradlew publishPlugin -PpluginArchive="$ARCHIVE" -x buildPlugin
