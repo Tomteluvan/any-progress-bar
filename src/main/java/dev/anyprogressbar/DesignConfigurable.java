@@ -145,6 +145,8 @@ public final class DesignConfigurable implements Configurable {
         }));
         actions.add(button("Export...", KeyEvent.VK_X, this::exportSelected));
         actions.add(button("Import...", KeyEvent.VK_I, this::importDesign));
+        actions.add(button("Export library...", this::exportLibrary));
+        actions.add(button("Import library...", this::importLibrary));
         library.add(actions, BorderLayout.SOUTH);
         content.add(library, BorderLayout.WEST);
 
@@ -381,6 +383,72 @@ public final class DesignConfigurable implements Configurable {
         } catch (IOException | IllegalArgumentException e) {
             Messages.showErrorDialog(root, e.getMessage(), "Could Not Export Design");
         }
+    }
+
+    private void exportLibrary() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new java.io.File("any-progress-bar-library." + LibraryPack.EXTENSION));
+        chooser.setFileFilter(new FileNameExtensionFilter("Any Progress Bar library", LibraryPack.EXTENSION));
+        if (chooser.showSaveDialog(root) != JFileChooser.APPROVE_OPTION) return;
+        Path target = chooser.getSelectedFile().toPath();
+        if (!target.getFileName().toString().toLowerCase(java.util.Locale.ROOT).endsWith("." + LibraryPack.EXTENSION)) {
+            target = target.resolveSibling(target.getFileName() + "." + LibraryPack.EXTENSION);
+        }
+        if (java.nio.file.Files.exists(target) && Messages.showYesNoDialog(root, target.getFileName() + " already exists. Replace it?",
+                getDisplayName(), Messages.getQuestionIcon()) != Messages.YES) return;
+        try {
+            LibraryPack.export(draft.designs, draft.selectedId, target);
+            Messages.showInfoMessage(root, "Exported " + draft.designs.size() + " designs to " + target, getDisplayName());
+        } catch (IOException | IllegalArgumentException e) {
+            Messages.showErrorDialog(root, e.getMessage(), "Could Not Export Library");
+        }
+    }
+
+    private void importLibrary() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileFilter(new FileNameExtensionFilter("Any Progress Bar library", LibraryPack.EXTENSION));
+        if (chooser.showOpenDialog(root) != JFileChooser.APPROVE_OPTION) return;
+        LibraryPack.Imported imported;
+        try {
+            imported = LibraryPack.importFrom(chooser.getSelectedFile().toPath(),
+                Path.of(PathManager.getConfigPath(), "any-progress-bar", "assets"));
+        } catch (IOException | IllegalArgumentException e) {
+            Messages.showErrorDialog(root, e.getMessage(), "Could Not Import Library");
+            return;
+        }
+        var plan = LibraryPack.planMerge(draft.designs, imported.designs());
+        String summary = imported.designs().size() + " designs in the file";
+        if (plan.duplicates() > 0) summary += ", " + plan.duplicates() + " of them already in your library";
+        if (plan.additions().isEmpty()) {
+            int answer = Messages.showDialog(root, summary + ". Nothing new would be merged.\n\nReplace your library with the "
+                    + imported.designs().size() + " imported designs instead?", "Import Library",
+                new String[]{"Replace Library", "Cancel"}, 1, Messages.getQuestionIcon());
+            if (answer == 0) replaceLibrary(imported);
+            return;
+        }
+        int answer = Messages.showDialog(root, summary + ".\n\nMerge adds the " + plan.additions().size()
+                + " new designs and keeps everything you have. Replace Library discards your current " + draft.designs.size()
+                + " designs in favour of the imported ones.", "Import Library",
+            new String[]{"Merge", "Replace Library", "Cancel"}, 0, Messages.getQuestionIcon());
+        if (answer == 0) mergeImported(plan);
+        else if (answer == 1) replaceLibrary(imported);
+    }
+
+    /** Adds the designs a merge found to be new; the active design stays as it is. */
+    void mergeImported(LibraryPack.MergePlan plan) {
+        for (Design design : plan.additions()) {
+            draft.designs.add(design);
+            model.addElement(design);
+        }
+        if (!plan.additions().isEmpty()) designs.setSelectedValue(plan.additions().getFirst(), true);
+    }
+
+    /** Replaces the whole library; the design that was active in the file becomes active, else the first one. */
+    void replaceLibrary(LibraryPack.Imported imported) {
+        draft.designs = new java.util.ArrayList<>(imported.designs());
+        Design active = imported.active();
+        draft.selectedId = (active != null ? active : draft.designs.getFirst()).id;
+        populate();
     }
 
     private void importDesign() {

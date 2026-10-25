@@ -91,6 +91,9 @@ Open **Settings > Appearance & Behavior > Any Progress Bar**.
 - **New** and **Duplicate** create a design; **Delete** removes one.
 - **Export...** saves a design, including its images, as a shareable `.apbdesign` file;
   **Import...** adds one to the library.
+- **Export library...** saves every design and all of their images as one `.apblibrary` file, which is
+  the reliable way to move your designs to another machine (the settings file stores absolute image paths).
+  **Import library...** offers to **Merge** (adds only designs you do not already have) or to **Replace Library**.
 - Add an object image, a repeating trail image and/or a background image.
 - Set a background colour with the colour picker or as `#RRGGBB`, or use the IDE colour.
 - Adjust object size, speed, trail length and motion.

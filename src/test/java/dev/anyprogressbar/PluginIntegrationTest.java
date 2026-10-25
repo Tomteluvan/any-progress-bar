@@ -187,6 +187,36 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         } finally { configurable.disposeUIResources(); }
     }
 
+    public void testMergingAndReplacingAnImportedLibrary() throws ConfigurationException {
+        DesignConfigurable configurable = new DesignConfigurable();
+        try {
+            JComponent root = configurable.createComponent();
+            Design added = new Design();
+            added.name = "From another machine";
+            added.objectImage = "bundled:fox.svg";
+            var plan = LibraryPack.planMerge(ProgressSettings.getInstance().getState().designs, java.util.List.of(Design.presets().getFirst().copy(), added));
+            assertEquals(1, plan.duplicates());
+            configurable.mergeImported(plan);
+            assertTrue(configurable.isModified());
+            assertEquals(added.name, designList(root).getSelectedValue().name);
+            configurable.apply();
+            var state = ProgressSettings.getInstance().getState();
+            assertEquals(Design.presets().size() + 1, state.designs.size());
+            assertEquals("merging keeps the active design", "preset-cat", state.selectedId);
+
+            Design only = new Design();
+            only.name = "Only me";
+            Design second = new Design();
+            second.name = "Second";
+            configurable.replaceLibrary(new LibraryPack.Imported(java.util.List.of(only, second), 1));
+            configurable.apply();
+            state = ProgressSettings.getInstance().getState();
+            assertEquals(2, state.designs.size());
+            assertEquals("Second", state.selected().name);
+            assertEquals("Second", designList(root).getSelectedValue().name);
+        } finally { configurable.disposeUIResources(); }
+    }
+
     public void testEditorScrollsInsteadOfClippingInSmallWindows() {
         DesignConfigurable configurable = new DesignConfigurable();
         try {

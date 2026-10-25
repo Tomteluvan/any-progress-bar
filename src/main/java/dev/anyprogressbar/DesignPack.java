@@ -2,6 +2,7 @@ package dev.anyprogressbar;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
@@ -43,9 +44,19 @@ public final class DesignPack {
         if (design.name.length() > MAX_NAME_LENGTH) {
             throw new IllegalArgumentException("Shorten the design name to at most " + MAX_NAME_LENGTH + " characters to export it.");
         }
+        writeAtomically(target, out -> write(design, out));
+    }
+
+    /** Something that writes a file's contents; see {@link #writeAtomically}. */
+    interface Writer {
+        void write(OutputStream out) throws IOException;
+    }
+
+    /** Writes to a temporary sibling and only replaces {@code target} once the whole file was written successfully. */
+    static void writeAtomically(Path target, Writer writer) throws IOException {
         Path temp = Files.createTempFile(target.toAbsolutePath().getParent(), ".apb-export", ".tmp");
         try {
-            write(design, temp);
+            try (var out = Files.newOutputStream(temp)) { writer.write(out); }
             try {
                 Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             } catch (AtomicMoveNotSupportedException e) {
@@ -54,7 +65,8 @@ public final class DesignPack {
         } finally { Files.deleteIfExists(temp); }
     }
 
-    private static void write(Design design, Path target) throws IOException {
+    /** Writes one design as a pack to {@code out}, which is closed. */
+    static void write(Design design, OutputStream out) throws IOException {
         Properties props = new Properties();
         props.setProperty("format", Integer.toString(FORMAT));
         props.setProperty("name", design.name);
@@ -64,7 +76,7 @@ public final class DesignPack {
         props.setProperty("trailLength", Integer.toString(design.trailLength));
         props.setProperty("motion", design.motion.name());
         String[] references = {design.objectImage, design.trailImage, design.backgroundImage};
-        try (var zip = new ZipOutputStream(Files.newOutputStream(target))) {
+        try (var zip = new ZipOutputStream(out)) {
             for (int i = 0; i < LAYERS.length; i++) {
                 String reference = references[i];
                 if (reference.isBlank()) continue;
@@ -89,12 +101,18 @@ public final class DesignPack {
 
     /** Reads a design pack, imports its images into {@code assets} and returns a validated design with a fresh id. */
     public static Design importFrom(Path source, Path assets) throws IOException {
+        try (var in = Files.newInputStream(source)) { return importFrom(in, assets); }
+    }
+
+    /** Like {@link #importFrom(Path, Path)} for a pack that is already open; the stream is not closed. */
+    static Design importFrom(InputStream source, Path assets) throws IOException {
         Properties props = null;
         var images = new java.util.HashMap<String, byte[]>();
         var seen = new java.util.HashSet<String>();
         long total = 0;
         long retained = 0;
-        try (var zip = new ZipInputStream(Files.newInputStream(source))) {
+        try {
+            var zip = new ZipInputStream(source);
             for (ZipEntry entry; (entry = zip.getNextEntry()) != null; ) {
                 String entryName = entry.getName();
                 if (seen.size() >= MAX_ENTRIES) {
