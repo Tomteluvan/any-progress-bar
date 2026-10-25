@@ -57,6 +57,35 @@ public final class ProgressPainter {
     /** Share of the object's width the trail runs under it: the trail sits behind the object, tucked in just enough to avoid gaps. */
     private static final float TRAIL_TUCK = 0.2f;
 
+    private static final double WIGGLE_ANGLE = 0.12;
+    private static final double BOB_SHARE = 0.12;
+    private static final double HOP_SHARE = 0.3;
+
+    /**
+     * Largest object height, up to {@code requested}, for which every frame of {@code motion} still fits inside a bar
+     * of {@code height}: hop and bob need room to travel, wiggle and spin need room for the rotated corners.
+     */
+    static int motionSafeHeight(Design.Motion motion, int height, int requested, float aspect) {
+        double fit = switch (motion) {
+            case HOP -> height - Math.ceil(Math.max(2, height * HOP_SHARE));
+            case BOB -> height - 2 * Math.ceil(height * BOB_SHARE);
+            case WIGGLE -> height / (Math.cos(WIGGLE_ANGLE) + aspect * Math.sin(WIGGLE_ANGLE));
+            case SPIN -> height / Math.hypot(1, aspect);
+            default -> height;
+        };
+        return Math.clamp((long) Math.floor(fit), 1, Math.max(1, requested));
+    }
+
+    /** Extra space to keep free at each end of the bar so a rotating object is not clipped sideways. */
+    static int motionSafePadding(Design.Motion motion, int objectWidth, int objectHeight) {
+        double extent = switch (motion) {
+            case WIGGLE -> objectWidth * Math.cos(WIGGLE_ANGLE) + objectHeight * Math.sin(WIGGLE_ANGLE);
+            case SPIN -> Math.hypot(objectWidth, objectHeight);
+            default -> objectWidth;
+        };
+        return (int) Math.ceil(Math.max(0, extent - objectWidth) / 2);
+    }
+
     public static double position(boolean indeterminate, double progress, double seconds, int speed) {
         return position(indeterminate, progress, seconds, speed, Design.Motion.GLIDE);
     }
@@ -89,9 +118,11 @@ public final class ProgressPainter {
             if (height < MIN_ARTWORK_HEIGHT) { paintPlain(g, width, height, progress, indeterminate, seconds); return; }
             double phase = seconds * design.speed / 100.0 * Math.PI * 2;
             int objectHeight = Math.min(design.size, height);
+            if (object != null) objectHeight = motionSafeHeight(design.motion, height, objectHeight, object.aspect());
             int objectWidth = object == null ? 0 : Math.clamp(Math.round(objectHeight * object.aspect()), 1, width);
+            int padding = object == null ? 0 : Math.min(motionSafePadding(design.motion, objectWidth, objectHeight), (width - objectWidth) / 2);
             double fraction = position(indeterminate, progress, seconds, design.speed, design.motion);
-            int x = (int) Math.round(fraction * (width - objectWidth));
+            int x = padding + (int) Math.round(fraction * (width - objectWidth - 2 * padding));
             int edge = object == null ? (int) Math.round(fraction * width) : x + Math.round(objectWidth * TRAIL_TUCK);
             if (trail != null && design.trailLength > 0) {
                 Graphics2D t = (Graphics2D) g.create();
