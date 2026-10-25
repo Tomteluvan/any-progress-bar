@@ -7,7 +7,10 @@ import com.github.weisj.jsvg.parser.LoaderContext;
 import com.github.weisj.jsvg.renderer.awt.NullPlatformSupport;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,28 +40,45 @@ public final class Artwork {
         this.vector = vector;
     }
 
+    /** Largest image file that is read, imported or exported. */
+    static final int MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
     public static Artwork load(String reference) throws IOException {
         if (reference.isBlank()) return null;
-        URL url;
+        byte[] bytes;
         if (reference.startsWith("bundled:")) {
-            url = Artwork.class.getResource("/art/" + reference.substring(8));
+            URL url = Artwork.class.getResource("/art/" + reference.substring(8));
             if (url == null) throw new IOException("Missing bundled artwork: " + reference);
+            try (var stream = url.openStream()) { bytes = readBounded(stream); }
         } else {
-            url = Path.of(reference).toUri().toURL();
+            try (var stream = Files.newInputStream(Path.of(reference))) { bytes = readBounded(stream); }
         }
-        if (reference.toLowerCase(Locale.ROOT).endsWith(".svg")) {
-            validateSvg(url);
-            SVGDocument svg = new SVGLoader().load(url, LoaderContext.builder().resourceLoader(uri -> {
-                throw new IOException("External SVG resources are not supported: " + uri);
-            }).build());
+        return decode(bytes, reference.toLowerCase(Locale.ROOT).endsWith(".svg"), reference);
+    }
+
+    /** Reads at most {@link #MAX_IMAGE_BYTES}; anything larger is rejected without being read in full. */
+    static byte[] readBounded(InputStream stream) throws IOException {
+        byte[] bytes = stream.readNBytes(MAX_IMAGE_BYTES + 1);
+        if (bytes.length > MAX_IMAGE_BYTES) throw new IOException("Images must be at most 10 MB.");
+        return bytes;
+    }
+
+    /** Validates and decodes one snapshot of an image, so what is validated is exactly what is rendered or stored. */
+    private static Artwork decode(byte[] bytes, boolean svgFile, String label) throws IOException {
+        if (svgFile) {
+            validateSvg(bytes);
+            SVGDocument svg = new SVGLoader().load(new ByteArrayInputStream(bytes), URI.create("about:blank"),
+                LoaderContext.builder().resourceLoader(uri -> {
+                    throw new IOException("External SVG resources are not supported: " + uri);
+                }).build());
             if (svg == null || svg.size().width <= 0 || svg.size().height <= 0) {
-                throw new IOException("Cannot read SVG: " + reference);
+                throw new IOException("Cannot read SVG: " + label);
             }
             return new Artwork(null, svg);
         }
-        try (var stream = url.openStream(); var input = ImageIO.createImageInputStream(stream)) {
+        try (var input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
             var readers = ImageIO.getImageReaders(input);
-            if (!readers.hasNext()) throw new IOException("Cannot read image: " + reference);
+            if (!readers.hasNext()) throw new IOException("Cannot read image: " + label);
             var reader = readers.next();
             try {
                 reader.setInput(input);
@@ -72,8 +92,8 @@ public final class Artwork {
         }
     }
 
-    private static void validateSvg(URL url) throws IOException {
-        try (var stream = url.openStream()) {
+    private static void validateSvg(byte[] bytes) throws IOException {
+        try (var stream = new ByteArrayInputStream(bytes)) {
             var factory = DocumentBuilderFactory.newInstance();
             factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
             factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
@@ -134,15 +154,18 @@ public final class Artwork {
     }
 
     public static String importFile(Path source, Path directory) throws IOException {
-        String filename = source.getFileName().toString();
-        int dot = filename.lastIndexOf('.');
-        String extension = dot < 0 ? "" : filename.substring(dot + 1).toLowerCase(Locale.ROOT);
-        if (!java.util.Set.of("png", "jpg", "jpeg", "svg").contains(extension)) {
-            throw new IOException("Choose a PNG, JPG or SVG file.");
-        }
-        if (Files.size(source) > 10 * 1024 * 1024) throw new IOException("Images must be at most 10 MB.");
-        load(source.toString());
-        byte[] bytes = Files.readAllBytes(source);
+        String extension = extensionOf(source.getFileName().toString());
+        checkExtension(extension);
+        byte[] bytes;
+        try (var stream = Files.newInputStream(source)) { bytes = readBounded(stream); }
+        return importBytes(bytes, extension, directory);
+    }
+
+    /** Validates {@code bytes} and stores exactly those bytes under their content hash; returns the stored path. */
+    static String importBytes(byte[] bytes, String extension, Path directory) throws IOException {
+        checkExtension(extension);
+        if (bytes.length > MAX_IMAGE_BYTES) throw new IOException("Images must be at most 10 MB.");
+        decode(bytes, extension.equals("svg"), "the selected file");
         String hash;
         try {
             hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
@@ -153,6 +176,17 @@ public final class Artwork {
         Path target = directory.resolve(hash + "." + extension);
         if (!Files.exists(target)) Files.write(target, bytes);
         return target.toString();
+    }
+
+    static String extensionOf(String filename) {
+        int dot = filename.lastIndexOf('.');
+        return dot < 0 ? "" : filename.substring(dot + 1).toLowerCase(Locale.ROOT);
+    }
+
+    private static void checkExtension(String extension) throws IOException {
+        if (!java.util.Set.of("png", "jpg", "jpeg", "svg").contains(extension)) {
+            throw new IOException("Choose a PNG, JPG or SVG file.");
+        }
     }
 
     public float aspect() {

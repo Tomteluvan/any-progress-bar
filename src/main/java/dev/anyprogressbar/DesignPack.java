@@ -145,11 +145,7 @@ public final class DesignPack {
             throw new IOException("Design file references a missing image: " + value);
         }
         String entry = value.substring(5);
-        Path temp = Files.createTempFile("apb-import", extensionOf(entry));
-        try {
-            Files.write(temp, images.get(entry));
-            return Artwork.importFile(temp, assets);
-        } finally { Files.deleteIfExists(temp); }
+        return Artwork.importBytes(images.get(entry), Artwork.extensionOf(entry), assets);
     }
 
     private static boolean isLayerEntry(String name) {
