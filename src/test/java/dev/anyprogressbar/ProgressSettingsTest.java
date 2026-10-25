@@ -1,8 +1,13 @@
 package dev.anyprogressbar;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ProgressSettingsTest {
@@ -84,6 +89,70 @@ class ProgressSettingsTest {
         data.migratePresets();
         assertFalse(ids(data).contains("preset-snail-mail"));
         assertEquals(previousSize + 4, data.designs.size());
+    }
+
+    @TempDir Path temp;
+
+    @Test void repairKeepsValidDesignsAndDropsOnlyTheBrokenOnes() {
+        var data = new ProgressSettings.Data();
+        int count = data.designs.size();
+        Design badColour = new Design();
+        badColour.name = "Bad colour";
+        badColour.backgroundColor = "blue";
+        Design duplicate = data.designs.getFirst().copy();
+        duplicate.name = "Duplicate id";
+        data.designs.add(badColour);
+        data.designs.add(duplicate);
+        data.designs.add(null);
+        var notes = new ArrayList<String>();
+        var repaired = data.repaired(notes);
+        assertEquals(count, repaired.designs.size());
+        assertEquals(3, notes.size());
+        assertTrue(notes.stream().anyMatch(n -> n.contains("Bad colour")));
+        assertTrue(notes.stream().anyMatch(n -> n.contains("Duplicate id") && n.contains("duplicates")));
+        assertEquals(data.selectedId, repaired.selectedId);
+        repaired.validate();
+    }
+
+    @Test void repairSelectsAnotherDesignWhenTheActiveOneIsMissing() {
+        var data = new ProgressSettings.Data();
+        data.selectedId = "gone";
+        var notes = new ArrayList<String>();
+        var repaired = data.repaired(notes);
+        assertEquals(data.designs.getFirst().id, repaired.selectedId);
+        assertEquals(1, notes.size());
+        repaired.validate();
+    }
+
+    @Test void repairRestoresPresetsWhenNothingValidIsLeft() {
+        var data = new ProgressSettings.Data();
+        Design broken = new Design();
+        broken.size = 1;
+        data.designs = new ArrayList<>(java.util.List.of(broken));
+        var notes = new ArrayList<String>();
+        var repaired = data.repaired(notes);
+        assertEquals(Design.presets().size(), repaired.designs.size());
+        assertEquals(ProgressSettings.Data.PRESET_VERSION, repaired.presetVersion);
+        assertEquals(2, notes.size());
+        repaired.validate();
+        data.designs = null;
+        assertEquals(Design.presets().size(), data.repaired(new ArrayList<>()).designs.size());
+    }
+
+    @Test void soundDataIsNotReportedAsRepaired() {
+        var notes = new ArrayList<String>();
+        new ProgressSettings.Data().repaired(notes);
+        assertTrue(notes.isEmpty());
+    }
+
+    @Test void theOriginalSettingsAreSavedBeforeBeingRepaired() throws IOException {
+        var data = new ProgressSettings.Data();
+        Design broken = new Design();
+        broken.name = "Keep me recoverable";
+        broken.speed = 5;
+        data.designs.add(broken);
+        Path file = ProgressSettings.backUp(data, temp.resolve("recovered"));
+        assertTrue(Files.readString(file).contains("Keep me recoverable"));
     }
 
     @Test void motionsHaveReadableLabels() {
