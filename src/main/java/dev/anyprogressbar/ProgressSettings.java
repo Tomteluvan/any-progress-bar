@@ -42,6 +42,15 @@ public final class ProgressSettings implements PersistentStateComponent<Progress
             return d;
         }
 
+        /** True when {@code other} holds the same settings: what the editor compares to know whether anything changed. */
+        public boolean sameContent(Data other) {
+            if (enabled != other.enabled || !Objects.equals(selectedId, other.selectedId) || designs.size() != other.designs.size()) {
+                return false;
+            }
+            for (int i = 0; i < designs.size(); i++) if (!designs.get(i).sameContent(other.designs.get(i))) return false;
+            return true;
+        }
+
         public void validate() {
             if (designs == null || designs.isEmpty()) throw new IllegalArgumentException("Keep at least one design.");
             var ids = new HashSet<String>();

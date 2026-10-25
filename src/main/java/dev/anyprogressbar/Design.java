@@ -2,6 +2,7 @@ package dev.anyprogressbar;
 
 import java.awt.Color;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 public final class Design {
@@ -79,6 +80,34 @@ public final class Design {
     public void validate() {
         List<Problem> problems = problems();
         if (!problems.isEmpty()) throw new IllegalArgumentException(problems.getFirst().message());
+    }
+
+    /**
+     * True when both designs would look and be saved the same. Imported images are stored under their content hash, so
+     * they are compared by file name rather than by the folder they happen to live in.
+     */
+    public boolean sameContent(Design other) {
+        return Objects.equals(id, other.id) && sameLook(other);
+    }
+
+    /** Like {@link #sameContent} but ignoring the ID: whether two designs are duplicates of each other. */
+    public boolean sameLook(Design other) {
+        return Objects.equals(name, other.name)
+            && imageKey(objectImage).equals(imageKey(other.objectImage))
+            && imageKey(trailImage).equals(imageKey(other.trailImage))
+            && imageKey(backgroundImage).equals(imageKey(other.backgroundImage))
+            && Objects.equals(backgroundColor, other.backgroundColor)
+            && size == other.size && speed == other.speed && trailLength == other.trailLength && motion == other.motion;
+    }
+
+    private static String imageKey(String reference) {
+        if (reference == null || reference.isBlank() || reference.startsWith("bundled:")) return reference == null ? "" : reference;
+        try {
+            var name = java.nio.file.Path.of(reference).getFileName();
+            return name == null ? reference : name.toString();
+        } catch (java.nio.file.InvalidPathException e) {
+            return reference;
+        }
     }
 
     public Color color(Color fallback) {

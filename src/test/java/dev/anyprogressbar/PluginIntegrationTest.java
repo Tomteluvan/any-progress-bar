@@ -86,17 +86,104 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
             assertFalse(configurable.isModified());
             findButton(root, "New").doClick();
             assertTrue(configurable.isModified());
+            findButton(root, "Use this design").doClick();
             configurable.apply();
             assertEquals(Design.presets().size() + 1, ProgressSettings.getInstance().getState().designs.size());
             assertEquals("My design", ProgressSettings.getInstance().getState().selected().name);
             assertFalse(configurable.isModified());
             findButton(root, "Duplicate").doClick();
+            findButton(root, "Use this design").doClick();
             configurable.apply();
             assertEquals(Design.presets().size() + 2, ProgressSettings.getInstance().getState().designs.size());
             assertEquals("My design (copy)", ProgressSettings.getInstance().getState().selected().name);
             findButton(root, "Delete").doClick();
             configurable.apply();
             assertEquals(Design.presets().size() + 1, ProgressSettings.getInstance().getState().designs.size());
+        } finally { configurable.disposeUIResources(); }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static javax.swing.JList<Design> designList(Container root) {
+        return (javax.swing.JList<Design>) find(root, c -> c instanceof javax.swing.JList<?>);
+    }
+
+    public void testBrowsingDesignsDoesNotChangeTheActiveOne() throws ConfigurationException {
+        DesignConfigurable configurable = new DesignConfigurable();
+        try {
+            JComponent root = configurable.createComponent();
+            String active = ProgressSettings.getInstance().getState().selectedId;
+            var list = designList(root);
+            assertEquals(active, list.getSelectedValue().id);
+            assertFalse("the active design is already in use", findButton(root, "Use this design").isEnabled());
+            for (int i = 0; i < list.getModel().getSize(); i++) list.setSelectedIndex(i);
+            assertFalse("browsing is not a modification", configurable.isModified());
+            list.setSelectedIndex(list.getModel().getSize() - 1);
+            assertTrue(findButton(root, "Use this design").isEnabled());
+            configurable.apply();
+            assertEquals("applying must keep the active design", active, ProgressSettings.getInstance().getState().selectedId);
+        } finally { configurable.disposeUIResources(); }
+    }
+
+    public void testUseThisDesignActivatesTheSelectedDesignAndMarksItInTheList() throws ConfigurationException {
+        DesignConfigurable configurable = new DesignConfigurable();
+        try {
+            JComponent root = configurable.createComponent();
+            var list = designList(root);
+            String original = ProgressSettings.getInstance().getState().selectedId;
+            list.setSelectedIndex(2);
+            Design other = list.getSelectedValue();
+            findButton(root, "Use this design").doClick();
+            assertTrue(configurable.isModified());
+            assertFalse(findButton(root, "Use this design").isEnabled());
+            var renderer = list.getCellRenderer();
+            var active = (javax.swing.JComponent) renderer.getListCellRendererComponent(list, other, 2, false, false);
+            assertTrue(active.toString().contains("Active") || active.getAccessibleContext().getAccessibleName().contains("Active"));
+            var inactive = (javax.swing.JComponent) renderer.getListCellRendererComponent(list, list.getModel().getElementAt(0), 0, false, false);
+            assertFalse(inactive.getAccessibleContext().getAccessibleName().contains("Active"));
+            configurable.apply();
+            assertEquals(other.id, ProgressSettings.getInstance().getState().selectedId);
+            assertFalse(configurable.isModified());
+            // choosing the original again is a real change, and applying it switches back
+            list.setSelectedValue(list.getModel().getElementAt(0), true);
+            assertEquals(original, list.getSelectedValue().id);
+            findButton(root, "Use this design").doClick();
+            assertTrue(configurable.isModified());
+            configurable.apply();
+            assertEquals(original, ProgressSettings.getInstance().getState().selectedId);
+            assertFalse(configurable.isModified());
+        } finally { configurable.disposeUIResources(); }
+    }
+
+    public void testModifiedStateFollowsRealDifferences() {
+        DesignConfigurable configurable = new DesignConfigurable();
+        try {
+            JComponent root = configurable.createComponent();
+            assertFalse(configurable.isModified());
+            JTextField color = findEditableField(root, "#242437");
+            color.setText("#000000");
+            assertTrue(configurable.isModified());
+            color.setText("#242437");
+            assertFalse("changing a value back is not a modification", configurable.isModified());
+            JCheckBox enabled = (JCheckBox) find(root, c -> c instanceof JCheckBox);
+            enabled.doClick();
+            assertTrue(configurable.isModified());
+            enabled.doClick();
+            assertFalse(configurable.isModified());
+        } finally { configurable.disposeUIResources(); }
+    }
+
+    public void testDeletingTheActiveDesignActivatesItsNeighbour() throws ConfigurationException {
+        DesignConfigurable configurable = new DesignConfigurable();
+        try {
+            JComponent root = configurable.createComponent();
+            var list = designList(root);
+            Design active = list.getSelectedValue();
+            findButton(root, "Delete").doClick();
+            configurable.apply();
+            var state = ProgressSettings.getInstance().getState();
+            assertNotSame(active.id, state.selectedId);
+            assertEquals(state.selectedId, list.getSelectedValue().id);
+            state.validate();
         } finally { configurable.disposeUIResources(); }
     }
 
