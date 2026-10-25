@@ -13,7 +13,6 @@ import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -32,7 +31,8 @@ import org.jetbrains.annotations.NotNull;
 
 public final class DesignConfigurable implements Configurable {
     private ProgressSettings.Data draft;
-    private JPanel root;
+    private JComponent root;
+    private JPanel content;
     private DefaultListModel<Design> model;
     private JList<Design> designs;
     private JCheckBox enabled;
@@ -54,11 +54,18 @@ public final class DesignConfigurable implements Configurable {
     @Override public String getDisplayName() { return "Any Progress Bar"; }
 
     @Override public JComponent createComponent() {
-        root = new JPanel(new BorderLayout(12, 12));
-        root.setBorder(JBUI.Borders.empty(12));
+        content = new JPanel(new BorderLayout(JBUI.scale(12), JBUI.scale(12)));
+        content.setBorder(JBUI.Borders.empty(12));
+        // The settings window can be small and the UI scale large: let the whole editor scroll instead of clipping it.
+        JBScrollPane page = new JBScrollPane(content, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+            ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        page.setBorder(JBUI.Borders.empty());
+        page.getVerticalScrollBar().setUnitIncrement(JBUI.scale(16));
+        page.getHorizontalScrollBar().setUnitIncrement(JBUI.scale(16));
+        root = page;
         enabled = new JCheckBox("Enable custom progress bars");
         enabled.addActionListener(e -> dirty = true);
-        root.add(enabled, BorderLayout.NORTH);
+        content.add(enabled, BorderLayout.NORTH);
 
         model = new DefaultListModel<>();
         designs = new JBList<>(model);
@@ -70,11 +77,11 @@ public final class DesignConfigurable implements Configurable {
                 showDesign();
             }
         });
-        JPanel library = new JPanel(new BorderLayout(6, 6));
+        JPanel library = new JPanel(new BorderLayout(JBUI.scale(6), JBUI.scale(6)));
         JBScrollPane scroll = new JBScrollPane(designs);
         scroll.setPreferredSize(JBUI.size(200, 300));
         library.add(scroll);
-        JPanel actions = new JPanel(new GridLayout(0, 1, 4, 4));
+        JPanel actions = new JPanel(new GridLayout(0, 1, JBUI.scale(4), JBUI.scale(4)));
         actions.add(button("New", () -> add(new Design())));
         actions.add(button("Duplicate", () -> {
             if (selected() == null) return;
@@ -106,7 +113,7 @@ public final class DesignConfigurable implements Configurable {
         actions.add(button("Export...", this::exportSelected));
         actions.add(button("Import...", this::importDesign));
         library.add(actions, BorderLayout.SOUTH);
-        root.add(library, BorderLayout.WEST);
+        content.add(library, BorderLayout.WEST);
 
         JPanel editor = new JPanel(new GridBagLayout());
         name = new JTextField(24);
@@ -123,14 +130,14 @@ public final class DesignConfigurable implements Configurable {
         row(editor, 1, "Object image", 'O', imageRow("object image", object, value -> selected().objectImage = value), object);
         row(editor, 2, "Trail image", 'T', imageRow("trail image", trail, value -> selected().trailImage = value), trail);
         row(editor, 3, "Background image", 'B', imageRow("background image", background, value -> selected().backgroundImage = value), background);
-        JPanel colors = new JPanel(new BorderLayout(4, 0));
+        JPanel colors = new JPanel(new BorderLayout(JBUI.scale(4), 0));
         colors.add(color);
         swatch = new ColorPanel();
         swatch.addActionListener(e -> {
             Color chosen = swatch.getSelectedColor();
             if (chosen != null) color.setText(String.format("#%06X", chosen.getRGB() & 0xffffff));
         });
-        JPanel colorButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        JPanel colorButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0));
         colorButtons.add(swatch);
         colorButtons.add(button("Use IDE colour", () -> color.setText("")));
         colors.add(colorButtons, BorderLayout.EAST);
@@ -158,7 +165,7 @@ public final class DesignConfigurable implements Configurable {
         filler.gridy = 14;
         filler.weighty = 1;
         editor.add(new JPanel(), filler);
-        root.add(editor, BorderLayout.CENTER);
+        content.add(editor, BorderLayout.CENTER);
         DocumentAdapter listener = new DocumentAdapter() {
             @Override protected void textChanged(@NotNull DocumentEvent e) { changed(); }
         };
@@ -185,9 +192,9 @@ public final class DesignConfigurable implements Configurable {
     }
 
     private JPanel imageRow(String layer, JTextField field, Consumer<String> assign) {
-        JPanel row = new JPanel(new BorderLayout(4, 0));
+        JPanel row = new JPanel(new BorderLayout(JBUI.scale(4), 0));
         row.add(field);
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(2), 0));
         JButton browse = button("Browse", () -> {
             JFileChooser chooser = new JFileChooser();
             chooser.setFileFilter(new FileNameExtensionFilter("Images (PNG, JPG, SVG)", "png", "jpg", "jpeg", "svg"));
@@ -364,6 +371,7 @@ public final class DesignConfigurable implements Configurable {
     @Override public void disposeUIResources() {
         if (preview != null) { preview.timer.stop(); preview.painter = null; }
         root = null;
+        content = null;
         draft = null;
         model = null;
         designs = null;
@@ -376,7 +384,7 @@ public final class DesignConfigurable implements Configurable {
         private ProgressPainter painter;
         private double progress = 0.65;
 
-        Preview() { setPreferredSize(new Dimension(400, 170)); }
+        Preview() { setPreferredSize(JBUI.size(400, 170)); setMinimumSize(JBUI.size(240, 170)); }
         @Override public void addNotify() { super.addNotify(); timer.start(); }
         @Override public void removeNotify() { timer.stop(); super.removeNotify(); }
         @Override protected void paintComponent(Graphics graphics) {
@@ -385,22 +393,23 @@ public final class DesignConfigurable implements Configurable {
             double seconds = (System.nanoTime() - started) / 1_000_000_000.0;
             Graphics2D g = (Graphics2D) graphics.create();
             try {
+                g.setFont(JBUI.Fonts.label());
                 g.setColor(getForeground());
-                g.drawString("Indeterminate", 0, 12);
-                g.translate(0, 18);
-                painter.paint(g, getWidth(), 30, 0, true, seconds, getBackground(), true);
-                g.translate(0, 42);
+                g.drawString("Indeterminate", 0, JBUI.scale(12));
+                g.translate(0, JBUI.scale(18));
+                painter.paint(g, getWidth(), JBUI.scale(30), 0, true, seconds, getBackground(), true);
+                g.translate(0, JBUI.scale(42));
                 g.setColor(getForeground());
                 g.drawString("Determinate", 0, 0);
-                g.translate(0, 6);
-                painter.paint(g, getWidth(), 30, progress, false, seconds, getBackground(), true);
-                g.translate(0, 42);
+                g.translate(0, JBUI.scale(6));
+                painter.paint(g, getWidth(), JBUI.scale(30), progress, false, seconds, getBackground(), true);
+                g.translate(0, JBUI.scale(42));
                 g.setColor(getForeground());
                 g.drawString("Compact (16 px) and status bar (8 px)", 0, 0);
-                g.translate(0, 6);
-                painter.paint(g, getWidth(), 16, progress, true, seconds, getBackground(), true);
-                g.translate(0, 22);
-                painter.paint(g, getWidth(), 8, progress, false, seconds, getBackground(), true);
+                g.translate(0, JBUI.scale(6));
+                painter.paint(g, getWidth(), JBUI.scale(16), progress, true, seconds, getBackground(), true);
+                g.translate(0, JBUI.scale(22));
+                painter.paint(g, getWidth(), JBUI.scale(8), progress, false, seconds, getBackground(), true);
             } finally { g.dispose(); }
         }
     }

@@ -100,6 +100,20 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         } finally { configurable.disposeUIResources(); }
     }
 
+    public void testEditorScrollsInsteadOfClippingInSmallWindows() {
+        DesignConfigurable configurable = new DesignConfigurable();
+        try {
+            JComponent root = configurable.createComponent();
+            assertInstanceOf(root, javax.swing.JScrollPane.class);
+            var scroll = (javax.swing.JScrollPane) root;
+            assertEquals(javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, scroll.getVerticalScrollBarPolicy());
+            assertEquals(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED, scroll.getHorizontalScrollBarPolicy());
+            // everything is still reachable inside the scroll pane
+            assertNotNull(findButton(root, "Export..."));
+            assertTrue(scroll.getViewport().getView().getPreferredSize().height > 0);
+        } finally { configurable.disposeUIResources(); }
+    }
+
     public void testInvalidColorBlocksApplyAndResetDiscardsDraft() throws ConfigurationException {
         DesignConfigurable configurable = new DesignConfigurable();
         try {
