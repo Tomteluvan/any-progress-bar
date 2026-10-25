@@ -28,12 +28,21 @@ public final class DesignPack {
     /** Current pack format; packs without a {@code format} entry predate versioning and are read as format 1. */
     private static final int FORMAT = 1;
     private static final long MAX_ENTRY_BYTES = 10L * 1024 * 1024;
+    /** Aggregate limits: a pack holds one descriptor and at most one image per layer, so these are generous. */
+    private static final int MAX_ENTRIES = 32;
+    private static final long MAX_DESCRIPTOR_BYTES = 64L * 1024;
+    private static final long MAX_TOTAL_BYTES = 40L * 1024 * 1024;
+    private static final long MAX_IMAGE_BYTES = 30L * 1024 * 1024;
+    static final int MAX_NAME_LENGTH = 200;
 
     private DesignPack() {}
 
     /** Writes the pack to a temporary sibling first so a failed export never damages an existing file at {@code target}. */
     public static void export(Design design, Path target) throws IOException {
         design.validate();
+        if (design.name.length() > MAX_NAME_LENGTH) {
+            throw new IllegalArgumentException("Shorten the design name to at most " + MAX_NAME_LENGTH + " characters to export it.");
+        }
         Path temp = Files.createTempFile(target.toAbsolutePath().getParent(), ".apb-export", ".tmp");
         try {
             write(design, temp);
@@ -82,15 +91,35 @@ public final class DesignPack {
     public static Design importFrom(Path source, Path assets) throws IOException {
         Properties props = null;
         var images = new java.util.HashMap<String, byte[]>();
+        var seen = new java.util.HashSet<String>();
+        long total = 0;
+        long retained = 0;
         try (var zip = new ZipInputStream(Files.newInputStream(source))) {
             for (ZipEntry entry; (entry = zip.getNextEntry()) != null; ) {
                 String entryName = entry.getName();
+                if (seen.size() >= MAX_ENTRIES) {
+                    throw new IOException("Design file has too many entries: at most " + MAX_ENTRIES + ".");
+                }
+                if (!seen.add(entryName)) throw new IOException("Design file has a duplicate entry: " + entryName);
                 if (entry.isDirectory()) continue;
-                if (entryName.equals(DESCRIPTOR)) {
+                boolean descriptor = entryName.equals(DESCRIPTOR);
+                boolean layer = isLayerEntry(entryName);
+                // Every entry is read through the same budget, recognised or not, so skipped data counts too.
+                long limit = Math.min(descriptor ? MAX_DESCRIPTOR_BYTES : MAX_ENTRY_BYTES, MAX_TOTAL_BYTES - total);
+                byte[] bytes = readLimited(zip, limit, descriptor
+                    ? "The design descriptor must be at most " + MAX_DESCRIPTOR_BYTES / 1024 + " KB."
+                    : limit < MAX_ENTRY_BYTES ? "Design files may hold at most " + MAX_TOTAL_BYTES / (1024 * 1024) + " MB in total."
+                    : "Design file entries must be at most 10 MB.");
+                total += bytes.length;
+                if (descriptor) {
                     props = new Properties();
-                    props.load(new StringReader(new String(readLimited(zip), StandardCharsets.ISO_8859_1)));
-                } else if (isLayerEntry(entryName)) {
-                    images.put(entryName, readLimited(zip));
+                    props.load(new StringReader(new String(bytes, StandardCharsets.ISO_8859_1)));
+                } else if (layer) {
+                    retained += bytes.length;
+                    if (retained > MAX_IMAGE_BYTES) {
+                        throw new IOException("Design file images may total at most " + MAX_IMAGE_BYTES / (1024 * 1024) + " MB.");
+                    }
+                    images.put(entryName, bytes);
                 }
             }
         } catch (java.util.zip.ZipException e) {
@@ -102,6 +131,9 @@ public final class DesignPack {
             Design design = new Design();
             design.id = UUID.randomUUID().toString();
             design.name = props.getProperty("name", "Imported design");
+            if (design.name.length() > MAX_NAME_LENGTH) {
+                throw new IOException("Invalid design file: the name is longer than " + MAX_NAME_LENGTH + " characters.");
+            }
             design.backgroundColor = props.getProperty("backgroundColor", "");
             design.size = Integer.parseInt(props.getProperty("size", "24"));
             design.speed = Integer.parseInt(props.getProperty("speed", "100"));
@@ -160,9 +192,9 @@ public final class DesignPack {
         return dot < 0 ? "" : name.substring(dot).toLowerCase(Locale.ROOT);
     }
 
-    private static byte[] readLimited(InputStream in) throws IOException {
-        byte[] bytes = in.readNBytes((int) MAX_ENTRY_BYTES + 1);
-        if (bytes.length > MAX_ENTRY_BYTES) throw new IOException("Design file entries must be at most 10 MB.");
+    private static byte[] readLimited(InputStream in, long limit, String message) throws IOException {
+        byte[] bytes = in.readNBytes((int) limit + 1);
+        if (bytes.length > limit) throw new IOException(message);
         return bytes;
     }
 }

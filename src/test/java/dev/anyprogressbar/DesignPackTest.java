@@ -78,6 +78,64 @@ class DesignPackTest {
         assertThrows(IOException.class, () -> DesignPack.importFrom(pack(map), assets()));
     }
 
+    @Test void rejectsDescriptorsBeyondTheDescriptorLimit() throws IOException {
+        var map = entries("name=Big\n#" + "x".repeat(64 * 1024) + "\n");
+        var e = assertThrows(IOException.class, () -> DesignPack.importFrom(pack(map), assets()));
+        assertTrue(e.getMessage().contains("descriptor"));
+        assertNotNull(DesignPack.importFrom(pack(entries("name=Fine\n#" + "x".repeat(60 * 1024) + "\n")), assets()));
+    }
+
+    @Test void rejectsTooManyEntriesEvenIfUnrecognised() throws IOException {
+        var map = entries("name=Many\n");
+        for (int i = 0; i < 40; i++) map.put("extra" + i + ".txt", new byte[1]);
+        var e = assertThrows(IOException.class, () -> DesignPack.importFrom(pack(map), assets()));
+        assertTrue(e.getMessage().contains("too many entries"));
+    }
+
+    @Test void unrecognisedEntriesCountTowardsTheTotalSize() throws IOException {
+        var map = entries("name=Bomb\n");
+        for (int i = 0; i < 5; i++) map.put("junk" + i + ".bin", new byte[9 * 1024 * 1024]);
+        var e = assertThrows(IOException.class, () -> DesignPack.importFrom(pack(map), assets()));
+        assertTrue(e.getMessage().contains("in total"));
+    }
+
+    @Test void retainedImagesAreBoundedAcrossLayers() throws IOException {
+        var map = entries("name=Heavy\nobject=file:object.png\n");
+        for (String name : new String[]{"object.png", "object.jpg", "object.svg", "trail.png"}) {
+            map.put(name, new byte[9 * 1024 * 1024]);
+        }
+        var e = assertThrows(IOException.class, () -> DesignPack.importFrom(pack(map), assets()));
+        assertTrue(e.getMessage().contains("images may total"));
+        assertFalse(Files.exists(assets()));
+    }
+
+    @Test void rejectsDuplicateEntries() throws IOException {
+        Path file = Files.createTempFile(temp, "dup", "." + DesignPack.EXTENSION);
+        try (var zip = new ZipOutputStream(Files.newOutputStream(file))) {
+            for (String name : new String[]{"design.properties", "design.properties"}) {
+                zip.putNextEntry(new ZipEntry(name));
+                zip.write(text("name=Twice\n"));
+                zip.closeEntry();
+            }
+        } catch (java.util.zip.ZipException e) {
+            return; // the JDK refuses to write duplicates; nothing to import
+        }
+        assertThrows(IOException.class, () -> DesignPack.importFrom(file, assets()));
+    }
+
+    @Test void rejectsOverlongNamesOnImportAndExport() throws IOException {
+        String longName = "n".repeat(DesignPack.MAX_NAME_LENGTH + 1);
+        var e = assertThrows(IOException.class, () -> DesignPack.importFrom(pack(entries("name=" + longName + "\n")), assets()));
+        assertTrue(e.getMessage().contains("name"));
+        Design design = new Design();
+        design.name = longName;
+        assertThrows(IllegalArgumentException.class, () -> DesignPack.export(design, temp.resolve("long." + DesignPack.EXTENSION)));
+        design.name = "n".repeat(DesignPack.MAX_NAME_LENGTH);
+        Path ok = temp.resolve("ok." + DesignPack.EXTENSION);
+        DesignPack.export(design, ok);
+        assertEquals(design.name, DesignPack.importFrom(ok, assets()).name);
+    }
+
     @Test void rejectsReferenceToMissingImage() throws IOException {
         var map = entries("name=Broken\nobject=file:object.png\n");
         var e = assertThrows(IOException.class, () -> DesignPack.importFrom(pack(map), assets()));
