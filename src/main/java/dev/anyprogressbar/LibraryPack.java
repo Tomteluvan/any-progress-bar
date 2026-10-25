@@ -1,5 +1,6 @@
 package dev.anyprogressbar;
 
+import com.intellij.openapi.progress.ProgressManager;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -56,6 +57,7 @@ public final class LibraryPack {
             properties.setProperty("count", Integer.toString(designs.size()));
             try (var zip = new ZipOutputStream(out)) {
                 for (int i = 0; i < designs.size(); i++) {
+                    ProgressManager.checkCanceled();
                     Design design = designs.get(i);
                     if (Objects.equals(design.id, activeId)) properties.setProperty("active", Integer.toString(i));
                     var pack = new ByteArrayOutputStream();
@@ -93,6 +95,7 @@ public final class LibraryPack {
         try (var in = java.nio.file.Files.newInputStream(source)) {
             var zip = new ZipInputStream(in);
             for (ZipEntry entry; (entry = zip.getNextEntry()) != null; ) {
+                ProgressManager.checkCanceled();
                 String name = entry.getName();
                 if (seen.size() > MAX_DESIGNS) throw new IOException("Library file has too many entries.");
                 if (!seen.add(name)) throw new IOException("Library file has a duplicate entry: " + name);

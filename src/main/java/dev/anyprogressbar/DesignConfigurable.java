@@ -2,6 +2,8 @@ package dev.anyprogressbar;
 
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
+import com.intellij.openapi.progress.ProcessCanceledException;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.ui.ColoredListCellRenderer;
@@ -29,6 +31,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -57,6 +62,11 @@ public final class DesignConfigurable implements Configurable {
     private final Map<Design.Field, JComponent> fieldControls = new EnumMap<>(Design.Field.class);
     private final Map<JComponent, String> baseDescriptions = new HashMap<>();
     private String announced = "";
+    private int previewTicket;
+    private Future<?> previewBuild;
+    private String builtKey = "";
+    private CompletableFuture<Void> previewDone = CompletableFuture.completedFuture(null);
+    private javax.swing.Timer previewDebounce;
     private Preview preview;
     private boolean updating;
     private JButton useButton;
@@ -67,6 +77,8 @@ public final class DesignConfigurable implements Configurable {
         fieldErrors.clear();
         fieldControls.clear();
         baseDescriptions.clear();
+        previewDebounce = new javax.swing.Timer(150, e -> { if (selected() != null) updatePreview(); });
+        previewDebounce.setRepeats(false);
         content = new JPanel(new BorderLayout(JBUI.scale(12), JBUI.scale(12)));
         content.setBorder(JBUI.Borders.empty(12));
         // The settings window can be small and the UI scale large: let the whole editor scroll instead of clipping it.
@@ -229,6 +241,34 @@ public final class DesignConfigurable implements Configurable {
         return root;
     }
 
+    /** File work that can fail with an {@link IOException}. */
+    private interface IoTask<T> {
+        T run() throws IOException;
+    }
+
+    /**
+     * Runs file work on a background thread under a cancellable modal progress, so the settings window keeps painting and
+     * a large image or slow disk cannot freeze the IDE. Throws {@link ProcessCanceledException} if the user cancels.
+     */
+    private <T> T inBackground(String title, IoTask<T> task) throws IOException {
+        var result = new AtomicReference<T>();
+        var failure = new AtomicReference<Exception>();
+        boolean completed = ProgressManager.getInstance().runProcessWithProgressSynchronously(() -> {
+            try {
+                result.set(task.run());
+            } catch (ProcessCanceledException e) {
+                throw e;
+            } catch (IOException | RuntimeException e) {
+                failure.set(e);
+            }
+        }, title, true, null, root);
+        if (!completed) throw new ProcessCanceledException();
+        Exception e = failure.get();
+        if (e instanceof IOException io) throw io;
+        if (e instanceof RuntimeException runtime) throw runtime;
+        return result.get();
+    }
+
     private static JButton button(String label, Runnable action) {
         JButton button = new JButton(label);
         button.addActionListener(e -> action.run());
@@ -286,13 +326,15 @@ public final class DesignConfigurable implements Configurable {
             JFileChooser chooser = new JFileChooser();
             chooser.setFileFilter(new FileNameExtensionFilter("Images (PNG, JPG, SVG)", "png", "jpg", "jpeg", "svg"));
             if (chooser.showOpenDialog(root) != JFileChooser.APPROVE_OPTION) return;
+            Path file = chooser.getSelectedFile().toPath();
             try {
-                String reference = Artwork.importFile(chooser.getSelectedFile().toPath(),
-                    Artwork.assetsDirectory());
+                String reference = inBackground("Importing image", () -> Artwork.importFile(file, Artwork.assetsDirectory()));
                 assign.accept(reference);
                 field.setText(reference);
                 field.setToolTipText(reference);
                 changed();
+            } catch (ProcessCanceledException cancelled) {
+                // the user cancelled the import; nothing changes
             } catch (IOException | IllegalArgumentException e) {
                 Messages.showErrorDialog(root, e.getMessage(), "Could Not Import Image");
             }
@@ -353,7 +395,7 @@ public final class DesignConfigurable implements Configurable {
         d.trailLength = (Integer) trailLength.getValue();
         d.motion = (Design.Motion) motion.getSelectedItem();
         designs.repaint();
-        updatePreview();
+        schedulePreview();
     }
 
     private void syncSwatch() {
@@ -376,9 +418,13 @@ public final class DesignConfigurable implements Configurable {
         }
         if (java.nio.file.Files.exists(target) && Messages.showYesNoDialog(root, target.getFileName() + " already exists. Replace it?",
                 getDisplayName(), Messages.getQuestionIcon()) != Messages.YES) return;
+        Design snapshot = design.copy();
+        Path destination = target;
         try {
-            DesignPack.export(design, target);
+            inBackground("Exporting design", () -> { DesignPack.export(snapshot, destination); return null; });
             Messages.showInfoMessage(root, "Exported to " + target, getDisplayName());
+        } catch (ProcessCanceledException cancelled) {
+            // the user cancelled the export; the previous file, if any, is untouched
         } catch (IOException | IllegalArgumentException e) {
             Messages.showErrorDialog(root, e.getMessage(), "Could Not Export Design");
         }
@@ -395,9 +441,14 @@ public final class DesignConfigurable implements Configurable {
         }
         if (java.nio.file.Files.exists(target) && Messages.showYesNoDialog(root, target.getFileName() + " already exists. Replace it?",
                 getDisplayName(), Messages.getQuestionIcon()) != Messages.YES) return;
+        var snapshot = draft.designs.stream().map(Design::copy).toList();
+        String activeId = draft.selectedId;
+        Path destination = target;
         try {
-            LibraryPack.export(draft.designs, draft.selectedId, target);
-            Messages.showInfoMessage(root, "Exported " + draft.designs.size() + " designs to " + target, getDisplayName());
+            inBackground("Exporting library", () -> { LibraryPack.export(snapshot, activeId, destination); return null; });
+            Messages.showInfoMessage(root, "Exported " + snapshot.size() + " designs to " + target, getDisplayName());
+        } catch (ProcessCanceledException cancelled) {
+            // the user cancelled the export; the previous file, if any, is untouched
         } catch (IOException | IllegalArgumentException e) {
             Messages.showErrorDialog(root, e.getMessage(), "Could Not Export Library");
         }
@@ -408,9 +459,11 @@ public final class DesignConfigurable implements Configurable {
         chooser.setFileFilter(new FileNameExtensionFilter("Any Progress Bar library", LibraryPack.EXTENSION));
         if (chooser.showOpenDialog(root) != JFileChooser.APPROVE_OPTION) return;
         LibraryPack.Imported imported;
+        Path file = chooser.getSelectedFile().toPath();
         try {
-            imported = LibraryPack.importFrom(chooser.getSelectedFile().toPath(),
-                Artwork.assetsDirectory());
+            imported = inBackground("Importing library", () -> LibraryPack.importFrom(file, Artwork.assetsDirectory()));
+        } catch (ProcessCanceledException cancelled) {
+            return; // the user cancelled the import
         } catch (IOException | IllegalArgumentException e) {
             Messages.showErrorDialog(root, e.getMessage(), "Could Not Import Library");
             return;
@@ -454,33 +507,104 @@ public final class DesignConfigurable implements Configurable {
         JFileChooser chooser = new JFileChooser();
         chooser.setFileFilter(new FileNameExtensionFilter("Any Progress Bar design", DesignPack.EXTENSION));
         if (chooser.showOpenDialog(root) != JFileChooser.APPROVE_OPTION) return;
+        Path file = chooser.getSelectedFile().toPath();
         try {
-            add(DesignPack.importFrom(chooser.getSelectedFile().toPath(),
-                Artwork.assetsDirectory()));
+            add(inBackground("Importing design", () -> DesignPack.importFrom(file, Artwork.assetsDirectory())));
+        } catch (ProcessCanceledException cancelled) {
+            // the user cancelled the import
         } catch (IOException | IllegalArgumentException e) {
             Messages.showErrorDialog(root, e.getMessage(), "Could Not Import Design");
         }
     }
 
-    /**
-     * Checks the selected design and shows what is wrong next to the control that caused it. The preview keeps showing
-     * the last valid version of the design while an edit is incomplete.
-     */
-    private void updatePreview() {
-        Design design = selected().copy();
+    private static Map<Design.Field, String> valueProblems(Design design) {
         var problems = new EnumMap<Design.Field, String>(Design.Field.class);
         for (Design.Problem problem : design.problems()) problems.putIfAbsent(problem.field(), problem.message());
-        ProgressPainter built = null;
-        if (problems.isEmpty()) {
-            ProgressPainter candidate = ProgressPainter.lenient(design); // lenient: report every broken layer, not just the first
-            for (Design.Problem problem : candidate.layerProblems()) problems.putIfAbsent(problem.field(), problem.message());
-            if (problems.isEmpty()) built = candidate;
-        }
-        if (built != null) preview.painter = built;
-        preview.stale = built == null && preview.painter != null;
-        showProblems(problems);
-        preview.repaint();
+        return problems;
     }
+
+    /** What decides whether the preview painter has to be rebuilt: everything except the name. */
+    private static String renderKey(Design d) {
+        return String.join("|", d.objectImage, d.trailImage, d.backgroundImage, d.backgroundColor,
+            Integer.toString(d.size), Integer.toString(d.speed), Integer.toString(d.trailLength), String.valueOf(d.motion));
+    }
+
+    /** An edit: bad values are flagged at once, a valid design rebuilds the preview shortly after the last keystroke. */
+    private void schedulePreview() {
+        if (!valueProblems(selected().copy()).isEmpty()) {
+            updatePreview();
+            return;
+        }
+        // Values are fine: clear their messages now, keep any image-layer message until the rebuild has checked the files.
+        var layers = new EnumMap<Design.Field, String>(Design.Field.class);
+        for (Design.Field field : new Design.Field[]{Design.Field.OBJECT_IMAGE, Design.Field.TRAIL_IMAGE, Design.Field.BACKGROUND_IMAGE}) {
+            JLabel message = fieldErrors.get(field);
+            if (message != null && message.isVisible()) layers.put(field, message.getText());
+        }
+        showProblems(layers);
+        previewDebounce.restart();
+    }
+
+    /**
+     * Checks the selected design and shows what is wrong next to the control that caused it. Images are read on a
+     * background thread and only the latest result is published; the preview keeps showing the last valid version of
+     * the design while an edit is incomplete or being checked.
+     */
+    private void updatePreview() {
+        previewDebounce.stop();
+        cancelPreviewBuild();
+        Design design = selected().copy();
+        int ticket = ++previewTicket;
+        var done = new CompletableFuture<Void>();
+        previewDone = done;
+        var problems = valueProblems(design);
+        if (!problems.isEmpty()) {
+            preview.stale = preview.painter != null;
+            showProblems(problems);
+            preview.repaint();
+            done.complete(null);
+            return;
+        }
+        String key = renderKey(design);
+        if (preview.painter != null && key.equals(builtKey)) { // e.g. only the name changed: the painter is still right
+            preview.stale = false;
+            showProblems(problems);
+            preview.repaint();
+            done.complete(null);
+            return;
+        }
+        var modality = com.intellij.openapi.application.ModalityState.stateForComponent(root);
+        previewBuild = com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            ProgressPainter candidate = ProgressPainter.lenient(design); // lenient: report every broken layer, not just the first
+            com.intellij.openapi.application.ApplicationManager.getApplication()
+                .invokeLater(() -> publishPreview(ticket, key, candidate, done), modality);
+        });
+    }
+
+    private void publishPreview(int ticket, String key, ProgressPainter candidate, CompletableFuture<Void> done) {
+        try {
+            if (preview == null || ticket != previewTicket) return; // closed, or a newer edit has been started
+            var problems = new EnumMap<Design.Field, String>(Design.Field.class);
+            for (Design.Problem problem : candidate.layerProblems()) problems.putIfAbsent(problem.field(), problem.message());
+            if (problems.isEmpty()) {
+                preview.painter = candidate;
+                builtKey = key;
+            }
+            preview.stale = !problems.isEmpty() && preview.painter != null;
+            showProblems(problems);
+            preview.repaint();
+        } finally { done.complete(null); }
+    }
+
+    private void cancelPreviewBuild() {
+        Future<?> running = previewBuild;
+        if (running != null) running.cancel(true);
+        previewBuild = null;
+        previewDone.complete(null);
+    }
+
+    /** Completes when the preview shows the result for the latest edit; for tests, which must wait for the background work. */
+    CompletableFuture<Void> previewIdle() { return previewDone; }
 
     private void showProblems(Map<Design.Field, String> problems) {
         for (Design.Field field : Design.Field.values()) {
@@ -532,6 +656,7 @@ public final class DesignConfigurable implements Configurable {
             motion.setSelectedItem(d.motion);
         } finally { updating = false; }
         preview.painter = null; // a different design must never show the previous one's preview
+        builtKey = "";
         updateUseButton();
         updatePreview();
     }
@@ -567,12 +692,17 @@ public final class DesignConfigurable implements Configurable {
                 throw new ConfigurationException(label + ": " + problems.getFirst().message());
             }
             draft.validate();
-            if (draft.enabled) new ProgressPainter(draft.selected());
+            if (draft.enabled) {
+                Design active = draft.selected().copy();
+                inBackground("Checking progress bar images", () -> new ProgressPainter(active));
+            }
             ProgressSettings.getInstance().loadState(draft);
             ProgressInstallation.getInstance().reload();
             AssetCleanup.cleanInBackground(draft.designs);
             designs.repaint();
             updateUseButton();
+        } catch (ProcessCanceledException cancelled) {
+            throw new ConfigurationException("Applying was cancelled.");
         } catch (IOException | IllegalArgumentException | java.text.ParseException e) {
             throw new ConfigurationException(e.getMessage());
         }
@@ -586,6 +716,9 @@ public final class DesignConfigurable implements Configurable {
     }
 
     @Override public void disposeUIResources() {
+        if (previewDebounce != null) previewDebounce.stop();
+        previewTicket++; // anything still being built is stale now
+        cancelPreviewBuild();
         if (preview != null) { preview.timer.stop(); preview.painter = null; }
         fieldErrors.clear();
         fieldControls.clear();

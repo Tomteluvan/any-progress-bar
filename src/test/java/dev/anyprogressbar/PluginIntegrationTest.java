@@ -1,6 +1,7 @@
 package dev.anyprogressbar;
 
 import com.intellij.openapi.options.ConfigurationException;
+import com.intellij.testFramework.PlatformTestUtil;
 import com.intellij.testFramework.fixtures.BasePlatformTestCase;
 import com.intellij.util.xmlb.XmlSerializer;
 import java.awt.Component;
@@ -15,6 +16,11 @@ import javax.swing.UIManager;
 public class PluginIntegrationTest extends BasePlatformTestCase {
     private ProgressSettings.Data previous;
 
+    /** The painter is built on a background thread; wait (while dispatching events) until it has been installed. */
+    private static void awaitReload() {
+        PlatformTestUtil.waitForFuture(ProgressInstallation.getInstance().latestReload(), 10_000);
+    }
+
     @Override protected void setUp() throws Exception {
         super.setUp();
         previous = ProgressSettings.getInstance().getState().copy();
@@ -25,6 +31,7 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         try {
             ProgressSettings.getInstance().loadState(previous);
             ProgressInstallation.getInstance().reload();
+            awaitReload();
         } finally { super.tearDown(); }
     }
 
@@ -53,11 +60,11 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         ProgressSettings.Data data = ProgressSettings.getInstance().getState().copy();
         data.enabled = false;
         ProgressSettings.getInstance().loadState(data);
-        installation.reload();
+        PlatformTestUtil.waitForFuture(installation.reload(), 10_000);
         Object original = UIManager.get("ProgressBarUI");
         data.enabled = true;
         ProgressSettings.getInstance().loadState(data);
-        installation.reload();
+        PlatformTestUtil.waitForFuture(installation.reload(), 10_000);
         assertEquals(AnimalProgressBarUI.class.getName(), UIManager.get("ProgressBarUI"));
         JProgressBar bar = new JProgressBar();
         assertInstanceOf(bar.getUI(), AnimalProgressBarUI.class);
@@ -72,11 +79,38 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         } finally { graphics.dispose(); }
         data.enabled = false;
         ProgressSettings.getInstance().loadState(data);
-        installation.reload();
+        PlatformTestUtil.waitForFuture(installation.reload(), 10_000);
         assertEquals(original, UIManager.get("ProgressBarUI"));
         bar.updateUI();
         assertFalse(bar.getUI() instanceof AnimalProgressBarUI);
         assertNull(UIManager.get(AnimalProgressBarUI.class.getName()));
+    }
+
+    public void testReloadLoadsImagesInTheBackgroundAndPublishesOnlyTheLatestResult() {
+        ProgressInstallation installation = ProgressInstallation.getInstance();
+        ProgressSettings.Data data = ProgressSettings.getInstance().getState().copy();
+        data.enabled = true;
+        ProgressSettings.getInstance().loadState(data);
+        PlatformTestUtil.waitForFuture(installation.reload(), 10_000);
+        ProgressPainter first = installation.painter();
+        assertNotNull(first);
+
+        Design broken = new Design();
+        broken.name = "Broken";
+        broken.objectImage = "/does-not-exist/object.png";
+        data.designs.add(broken);
+        data.selectedId = broken.id;
+        ProgressSettings.getInstance().loadState(data);
+        var superseded = installation.reload();
+        assertSame("nothing is installed until the background work has finished and events are dispatched", first, installation.painter());
+
+        data.selectedId = data.designs.getFirst().id;
+        ProgressSettings.getInstance().loadState(data);
+        var latest = installation.reload();
+        PlatformTestUtil.waitForFuture(latest, 10_000);
+        assertTrue("a newer reload completes the one it replaced", superseded.isDone());
+        assertNotSame(first, installation.painter());
+        assertTrue("the broken design's result must never be published", installation.painter().skippedLayers().isEmpty());
     }
 
     public void testEditorCreatesAppliesDuplicatesAndDeletesDesigns() throws ConfigurationException {
@@ -321,6 +355,7 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         DesignConfigurable configurable = new DesignConfigurable();
         try {
             JComponent root = configurable.createComponent();
+            PlatformTestUtil.waitForFuture(configurable.previewIdle(), 10_000);
             var object = fieldError(root, "Object image error");
             var trail = fieldError(root, "Trail image error");
             var background = fieldError(root, "Background image error");
@@ -389,6 +424,7 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         try {
             configurable.createComponent();
             configurable.apply();
+            awaitReload();
             assertNotNull(ProgressInstallation.getInstance().painter());
         } finally { configurable.disposeUIResources(); }
         data.selectedId = broken.id;
@@ -401,6 +437,7 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
             ((JCheckBox) checkbox).doClick();
             configurable.apply();
             assertFalse(ProgressSettings.getInstance().getState().enabled);
+            awaitReload();
             assertNull(ProgressInstallation.getInstance().painter());
         } finally { configurable.disposeUIResources(); }
     }

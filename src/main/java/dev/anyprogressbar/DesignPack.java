@@ -1,5 +1,6 @@
 package dev.anyprogressbar;
 
+import com.intellij.openapi.progress.ProgressManager;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -114,6 +115,7 @@ public final class DesignPack {
         try {
             var zip = new ZipInputStream(source);
             for (ZipEntry entry; (entry = zip.getNextEntry()) != null; ) {
+                ProgressManager.checkCanceled();
                 String entryName = entry.getName();
                 if (seen.size() >= MAX_ENTRIES) {
                     throw new IOException("Design file has too many entries: at most " + MAX_ENTRIES + ".");
