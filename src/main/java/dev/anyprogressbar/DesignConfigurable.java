@@ -23,6 +23,9 @@ import java.awt.GridLayout;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -49,6 +52,10 @@ public final class DesignConfigurable implements Configurable {
     private JSpinner trailLength;
     private JComboBox<Design.Motion> motion;
     private JLabel error;
+    private final Map<Design.Field, JLabel> fieldErrors = new EnumMap<>(Design.Field.class);
+    private final Map<Design.Field, JComponent> fieldControls = new EnumMap<>(Design.Field.class);
+    private final Map<JComponent, String> baseDescriptions = new HashMap<>();
+    private String announced = "";
     private Preview preview;
     private boolean updating;
     private boolean dirty;
@@ -56,6 +63,9 @@ public final class DesignConfigurable implements Configurable {
     @Override public String getDisplayName() { return "Any Progress Bar"; }
 
     @Override public JComponent createComponent() {
+        fieldErrors.clear();
+        fieldControls.clear();
+        baseDescriptions.clear();
         content = new JPanel(new BorderLayout(JBUI.scale(12), JBUI.scale(12)));
         content.setBorder(JBUI.Borders.empty(12));
         // The settings window can be small and the UI scale large: let the whole editor scroll instead of clipping it.
@@ -130,10 +140,13 @@ public final class DesignConfigurable implements Configurable {
         trailLength = new JSpinner(new SpinnerNumberModel(160, 0, 600, 10));
         motion = new ComboBox<>(Design.Motion.values());
         motion.setRenderer(SimpleListCellRenderer.create((label, value, index) -> label.setText(value == null ? "" : value.label())));
-        row(editor, 0, "Name", 'N', name, name);
-        row(editor, 1, "Object image", 'O', imageRow("object image", object, value -> selected().objectImage = value), object);
-        row(editor, 2, "Trail image", 'T', imageRow("trail image", trail, value -> selected().trailImage = value), trail);
-        row(editor, 3, "Background image", 'B', imageRow("background image", background, value -> selected().backgroundImage = value), background);
+        row(editor, 0, "Name", 'N', withError(Design.Field.NAME, name, name), name);
+        row(editor, 1, "Object image", 'O', withError(Design.Field.OBJECT_IMAGE,
+            imageRow("object image", object, value -> selected().objectImage = value), object), object);
+        row(editor, 2, "Trail image", 'T', withError(Design.Field.TRAIL_IMAGE,
+            imageRow("trail image", trail, value -> selected().trailImage = value), trail), trail);
+        row(editor, 3, "Background image", 'B', withError(Design.Field.BACKGROUND_IMAGE,
+            imageRow("background image", background, value -> selected().backgroundImage = value), background), background);
         JPanel colors = new JPanel(new BorderLayout(JBUI.scale(4), 0));
         colors.add(color);
         swatch = new ColorPanel();
@@ -146,10 +159,11 @@ public final class DesignConfigurable implements Configurable {
         colorButtons.add(swatch);
         colorButtons.add(button("Use IDE colour", KeyEvent.VK_U, () -> color.setText("")));
         colors.add(colorButtons, BorderLayout.EAST);
-        row(editor, 4, "Background colour", 'C', colors, color);
-        row(editor, 5, "Object size (px, 8-64)", 'S', size, spinnerField(size));
-        row(editor, 6, "Speed (%, 10-400)", 'P', speed, spinnerField(speed));
-        row(editor, 7, "Trail length (px, 0-600)", 'L', trailLength, spinnerField(trailLength));
+        row(editor, 4, "Background colour", 'C', withError(Design.Field.BACKGROUND_COLOR, colors, color), color);
+        row(editor, 5, "Object size (px, 8-64)", 'S', withError(Design.Field.SIZE, size, spinnerField(size)), spinnerField(size));
+        row(editor, 6, "Speed (%, 10-400)", 'P', withError(Design.Field.SPEED, speed, spinnerField(speed)), spinnerField(speed));
+        row(editor, 7, "Trail length (px, 0-600)", 'L', withError(Design.Field.TRAIL_LENGTH, trailLength, spinnerField(trailLength)),
+            spinnerField(trailLength));
         size.setToolTipText("Height of the object in pixels (8-64); capped to the bar height.");
         speed.setToolTipText("Percent. 100 = one lap every 4 seconds for indeterminate bars (10-400).");
         trailLength.setToolTipText("Pixels of trail drawn behind the object (0-600); 0 hides the trail.");
@@ -161,7 +175,7 @@ public final class DesignConfigurable implements Configurable {
         describe(motion, motion.getToolTipText());
         describe(color, color.getToolTipText());
         describe(name, "The name shown in the design list.");
-        row(editor, 8, "Motion", 'M', motion, motion);
+        row(editor, 8, "Motion", 'M', withError(Design.Field.MOTION, motion, motion), motion);
         row(editor, 9, "", new JLabel("Clear any image to omit it. Empty colour uses the IDE colour."));
         row(editor, 10, "", new JLabel("Background images overlay the colour. PNG, JPG and static SVG supported."));
         error = new JLabel(" ");
@@ -206,6 +220,21 @@ public final class DesignConfigurable implements Configurable {
         JButton button = button(label, action);
         button.setMnemonic(mnemonic);
         return button;
+    }
+
+    /** Wraps a control with a message line that appears under it when {@code field} has a problem. */
+    private JPanel withError(Design.Field field, JComponent component, JComponent control) {
+        JPanel panel = new JPanel(new BorderLayout(0, JBUI.scale(2)));
+        panel.add(component);
+        JLabel message = new JLabel();
+        message.setFont(JBUI.Fonts.smallFont());
+        message.setForeground(JBUI.CurrentTheme.Label.errorForeground());
+        message.setVisible(false);
+        name(message, field.label() + " error");
+        panel.add(message, BorderLayout.SOUTH);
+        fieldErrors.put(field, message);
+        fieldControls.put(field, control);
+        return panel;
     }
 
     private static void describe(JComponent component, String description) {
@@ -344,24 +373,58 @@ public final class DesignConfigurable implements Configurable {
         }
     }
 
+    /**
+     * Checks the selected design and shows what is wrong next to the control that caused it. The preview keeps showing
+     * the last valid version of the design while an edit is incomplete.
+     */
     private void updatePreview() {
-        try {
-            preview.painter = new ProgressPainter(selected());
-            setError(null);
-        } catch (IOException | IllegalArgumentException e) {
-            preview.painter = null;
-            setError(e.getMessage());
+        Design design = selected().copy();
+        var problems = new EnumMap<Design.Field, String>(Design.Field.class);
+        for (Design.Problem problem : design.problems()) problems.putIfAbsent(problem.field(), problem.message());
+        ProgressPainter built = null;
+        if (problems.isEmpty()) {
+            ProgressPainter candidate = ProgressPainter.lenient(design); // lenient: report every broken layer, not just the first
+            for (Design.Problem problem : candidate.layerProblems()) problems.putIfAbsent(problem.field(), problem.message());
+            if (problems.isEmpty()) built = candidate;
         }
+        if (built != null) preview.painter = built;
+        preview.stale = built == null && preview.painter != null;
+        showProblems(problems);
         preview.repaint();
     }
 
-    /** Shows a validation message, and has assistive technology read it out when it appears or changes. */
-    private void setError(String message) {
-        String text = message == null || message.isBlank() ? " " : message;
-        if (text.equals(error.getText())) return;
-        error.setText(text);
-        error.getAccessibleContext().setAccessibleDescription(text.isBlank() ? null : text);
-        if (!text.isBlank() && AccessibleAnnouncerUtil.isAnnouncingAvailable()) AccessibleAnnouncerUtil.announce(error, text, true);
+    private void showProblems(Map<Design.Field, String> problems) {
+        for (Design.Field field : Design.Field.values()) {
+            JLabel message = fieldErrors.get(field);
+            JComponent control = fieldControls.get(field);
+            if (message == null || control == null) continue;
+            String text = problems.get(field);
+            message.setText(text == null ? "" : text);
+            message.setVisible(text != null);
+            control.putClientProperty("JComponent.outline", text == null ? null : "error");
+            var context = control.getAccessibleContext();
+            if (context != null) {
+                String base = baseDescriptions.computeIfAbsent(control, c -> context.getAccessibleDescription() == null ? "" : context.getAccessibleDescription());
+                context.setAccessibleDescription(text == null ? base : (base + " Error: " + text).trim());
+            }
+            control.repaint();
+        }
+        String other = problems.get(Design.Field.OTHER);
+        String all = String.join(" ", problems.values());
+        String summary = problems.isEmpty() ? " "
+            : (other != null ? other + " " : "") + (problems.size() == 1 && other == null ? "Fix the highlighted field."
+                : "Fix the highlighted fields.") + " The preview shows the last valid version.";
+        setError(summary, all);
+    }
+
+    /** Shows the summary line; assistive technology gets the full text of every problem when it appears or changes. */
+    private void setError(String summary, String details) {
+        error.setText(summary);
+        error.getAccessibleContext().setAccessibleDescription(details.isBlank() ? null : details);
+        if (!details.equals(announced)) {
+            announced = details;
+            if (!details.isBlank() && AccessibleAnnouncerUtil.isAnnouncingAvailable()) AccessibleAnnouncerUtil.announce(error, details, true);
+        }
     }
 
     private void showDesign() {
@@ -379,6 +442,7 @@ public final class DesignConfigurable implements Configurable {
             trailLength.setValue(d.trailLength);
             motion.setSelectedItem(d.motion);
         } finally { updating = false; }
+        preview.painter = null; // a different design must never show the previous one's preview
         updatePreview();
     }
 
@@ -400,6 +464,13 @@ public final class DesignConfigurable implements Configurable {
             speed.commitEdit();
             trailLength.commitEdit();
             draft.enabled = enabled.isSelected();
+            for (Design design : draft.designs) {
+                var problems = design.problems();
+                if (problems.isEmpty()) continue;
+                designs.setSelectedValue(design, true); // show the offending design so its fields are highlighted
+                String label = design.name == null || design.name.isBlank() ? "A design" : "\"" + design.name + "\"";
+                throw new ConfigurationException(label + ": " + problems.getFirst().message());
+            }
             draft.validate();
             if (draft.enabled) new ProgressPainter(draft.selected());
             ProgressSettings.getInstance().loadState(draft);
@@ -420,6 +491,10 @@ public final class DesignConfigurable implements Configurable {
 
     @Override public void disposeUIResources() {
         if (preview != null) { preview.timer.stop(); preview.painter = null; }
+        fieldErrors.clear();
+        fieldControls.clear();
+        baseDescriptions.clear();
+        announced = "";
         root = null;
         content = null;
         draft = null;
@@ -432,9 +507,10 @@ public final class DesignConfigurable implements Configurable {
         private final long started = System.nanoTime();
         private final Timer timer = new Timer(33, e -> repaint());
         private ProgressPainter painter;
+        private boolean stale;
         private double progress = 0.65;
 
-        Preview() { setPreferredSize(JBUI.size(400, 170)); setMinimumSize(JBUI.size(240, 170)); }
+        Preview() { setPreferredSize(JBUI.size(400, 190)); setMinimumSize(JBUI.size(240, 190)); }
         @Override public void addNotify() { super.addNotify(); timer.start(); }
         @Override public void removeNotify() { timer.stop(); super.removeNotify(); }
         @Override protected void paintComponent(Graphics graphics) {
@@ -460,6 +536,11 @@ public final class DesignConfigurable implements Configurable {
                 painter.paint(g, getWidth(), JBUI.scale(16), progress, true, seconds, getBackground(), true);
                 g.translate(0, JBUI.scale(22));
                 painter.paint(g, getWidth(), JBUI.scale(8), progress, false, seconds, getBackground(), true);
+                if (stale) {
+                    g.translate(0, JBUI.scale(22));
+                    g.setColor(JBUI.CurrentTheme.Label.errorForeground());
+                    g.drawString("Showing the last valid version of this design", 0, 0);
+                }
             } finally { g.dispose(); }
         }
     }

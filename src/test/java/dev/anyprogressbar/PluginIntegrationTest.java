@@ -154,12 +154,83 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         DesignConfigurable configurable = new DesignConfigurable();
         try {
             JComponent root = configurable.createComponent();
-            findEditableField(root, "#242437").setText("not a color");
+            JTextField color = findEditableField(root, "#242437");
+            color.setText("not a color");
+            var message = fieldError(root, "Background colour error");
+            assertTrue(message.getText().contains("#RRGGBB"));
+            assertTrue(color.getAccessibleContext().getAccessibleDescription().contains("#RRGGBB"));
             var labels = new java.util.ArrayList<javax.swing.JLabel>();
             collect(root, labels, new java.util.ArrayList<>());
-            var error = labels.stream().filter(l -> "Validation message".equals(l.getAccessibleContext().getAccessibleName())).findFirst().orElseThrow();
-            assertTrue(error.getText().contains("#RRGGBB"));
-            assertEquals(error.getText(), error.getAccessibleContext().getAccessibleDescription());
+            var summary = labels.stream().filter(l -> "Validation message".equals(l.getAccessibleContext().getAccessibleName())).findFirst().orElseThrow();
+            assertTrue(summary.getAccessibleContext().getAccessibleDescription().contains("#RRGGBB"));
+        } finally { configurable.disposeUIResources(); }
+    }
+
+    private static javax.swing.JLabel fieldError(Container root, String accessibleName) {
+        var labels = new java.util.ArrayList<javax.swing.JLabel>();
+        collect(root, labels, new java.util.ArrayList<>());
+        return labels.stream().filter(l -> accessibleName.equals(l.getAccessibleContext().getAccessibleName())).findFirst().orElseThrow();
+    }
+
+    public void testProblemsAreShownNextToTheFieldThatCausedThem() {
+        DesignConfigurable configurable = new DesignConfigurable();
+        try {
+            JComponent root = configurable.createComponent();
+            JTextField color = findEditableField(root, "#242437");
+            var colorError = fieldError(root, "Background colour error");
+            assertFalse(colorError.isVisible());
+            assertNull(color.getClientProperty("JComponent.outline"));
+            color.setText("blue");
+            assertTrue(colorError.isVisible());
+            assertEquals("error", color.getClientProperty("JComponent.outline"));
+            assertFalse("other fields stay clean", fieldError(root, "Name error").isVisible());
+            // fixing the value clears the message and the highlight
+            color.setText("#123456");
+            assertFalse(colorError.isVisible());
+            assertNull(color.getClientProperty("JComponent.outline"));
+        } finally { configurable.disposeUIResources(); }
+    }
+
+    public void testBrokenImageNamesTheLayerThatFailed() {
+        ProgressSettings.Data data = new ProgressSettings.Data();
+        Design broken = new Design();
+        broken.name = "Broken";
+        broken.objectImage = "/does-not-exist/object.png";
+        broken.trailImage = "bundled:stars.svg";
+        broken.backgroundImage = "/does-not-exist/background.png";
+        data.designs.add(broken);
+        data.selectedId = broken.id;
+        ProgressSettings.getInstance().loadState(data);
+        DesignConfigurable configurable = new DesignConfigurable();
+        try {
+            JComponent root = configurable.createComponent();
+            var object = fieldError(root, "Object image error");
+            var trail = fieldError(root, "Trail image error");
+            var background = fieldError(root, "Background image error");
+            assertTrue(object.isVisible() && object.getText().startsWith("Object image:"));
+            assertFalse(trail.isVisible());
+            assertTrue(background.isVisible() && background.getText().startsWith("Background image:"));
+        } finally { configurable.disposeUIResources(); }
+    }
+
+    public void testApplyShowsTheOffendingDesignAndNamesIt() {
+        ProgressSettings.Data data = new ProgressSettings.Data();
+        DesignConfigurable configurable = new DesignConfigurable();
+        try {
+            JComponent root = configurable.createComponent();
+            findButton(root, "New").doClick();
+            findButton(root, "New").doClick();
+            JTextField colorField = (JTextField) find(root, c -> c instanceof JTextField f && f.isEditable() && f.getText().isEmpty() && f.getColumns() == 12);
+            colorField.setText("nope");
+            findButton(root, "Duplicate").doClick(); // selects another design, leaving the invalid one behind
+            try {
+                configurable.apply();
+                fail("an invalid design anywhere in the library must block apply");
+            } catch (ConfigurationException expected) {
+                assertTrue(expected.getMessage(), expected.getMessage().contains("My design"));
+                assertTrue(expected.getMessage().contains("#RRGGBB"));
+            }
+            assertTrue("the offending design is shown so its fields are highlighted", fieldError(root, "Background colour error").isVisible());
         } finally { configurable.disposeUIResources(); }
     }
 

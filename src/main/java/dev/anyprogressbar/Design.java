@@ -43,19 +43,42 @@ public final class Design {
         return d;
     }
 
+    /** The editable parts of a design, so a problem can be shown next to the control that caused it. */
+    public enum Field {
+        NAME("Name"), OBJECT_IMAGE("Object image"), TRAIL_IMAGE("Trail image"), BACKGROUND_IMAGE("Background image"),
+        BACKGROUND_COLOR("Background colour"), SIZE("Object size"), SPEED("Speed"), TRAIL_LENGTH("Trail length"),
+        MOTION("Motion"), OTHER("Design");
+
+        private final String label;
+        Field(String label) { this.label = label; }
+        public String label() { return label; }
+    }
+
+    public record Problem(Field field, String message) {}
+
+    /** Every problem with the design's values, in form order; empty when the design is valid. */
+    public List<Problem> problems() {
+        var problems = new java.util.ArrayList<Problem>();
+        if (name == null || name.isBlank()) problems.add(new Problem(Field.NAME, "Give the design a name."));
+        if (id == null || id.isBlank()) problems.add(new Problem(Field.OTHER, "The design has no ID."));
+        if (objectImage == null) problems.add(new Problem(Field.OBJECT_IMAGE, "Image values must not be null."));
+        if (trailImage == null) problems.add(new Problem(Field.TRAIL_IMAGE, "Image values must not be null."));
+        if (backgroundImage == null) problems.add(new Problem(Field.BACKGROUND_IMAGE, "Image values must not be null."));
+        if (backgroundColor == null) {
+            problems.add(new Problem(Field.BACKGROUND_COLOR, "Colour values must not be null."));
+        } else if (!backgroundColor.isBlank() && !backgroundColor.matches("#[0-9a-fA-F]{6}")) {
+            problems.add(new Problem(Field.BACKGROUND_COLOR, "Background colour must be #RRGGBB, or empty for the IDE colour."));
+        }
+        if (size < 8 || size > 64) problems.add(new Problem(Field.SIZE, "Object size must be 8-64 px."));
+        if (speed < 10 || speed > 400) problems.add(new Problem(Field.SPEED, "Speed must be 10-400%."));
+        if (trailLength < 0 || trailLength > 600) problems.add(new Problem(Field.TRAIL_LENGTH, "Trail length must be 0-600 px."));
+        if (motion == null) problems.add(new Problem(Field.MOTION, "Choose a motion."));
+        return problems;
+    }
+
     public void validate() {
-        if (id == null || id.isBlank() || name == null || name.isBlank()) {
-            throw new IllegalArgumentException("Give the design a name.");
-        }
-        if (objectImage == null || trailImage == null || backgroundImage == null || backgroundColor == null) {
-            throw new IllegalArgumentException("Image and colour values must not be null.");
-        }
-        if (!backgroundColor.isBlank() && !backgroundColor.matches("#[0-9a-fA-F]{6}")) {
-            throw new IllegalArgumentException("Background colour must be #RRGGBB, or empty for the IDE colour.");
-        }
-        if (size < 8 || size > 64 || speed < 10 || speed > 400 || trailLength < 0 || trailLength > 600 || motion == null) {
-            throw new IllegalArgumentException("Size: 8-64 px; speed: 10-400%; trail length: 0-600 px.");
-        }
+        List<Problem> problems = problems();
+        if (!problems.isEmpty()) throw new IllegalArgumentException(problems.getFirst().message());
     }
 
     public Color color(Color fallback) {

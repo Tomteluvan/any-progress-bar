@@ -14,7 +14,17 @@ public final class ProgressPainter {
     private final Artwork trail;
     private final Artwork background;
 
-    private final List<String> skippedLayers = new ArrayList<>();
+    private final List<Design.Problem> layerProblems = new ArrayList<>();
+
+    /** An image layer that cannot be loaded; the message names the layer and {@link #field()} says which one it is. */
+    public static final class LayerException extends IOException {
+        private final Design.Field field;
+        LayerException(Design.Field field, String message, Throwable cause) {
+            super(message, cause);
+            this.field = field;
+        }
+        public Design.Field field() { return field; }
+    }
 
     /** Strict: any unreadable image is an error, so the editor can report it. */
     public ProgressPainter(Design design) throws IOException {
@@ -33,23 +43,27 @@ public final class ProgressPainter {
     private ProgressPainter(Design design, boolean lenient) throws IOException {
         design.validate();
         this.design = design.copy();
-        object = layer("Object image", design.objectImage, lenient);
-        trail = layer("Trail image", design.trailImage, lenient);
-        background = layer("Background image", design.backgroundImage, lenient);
+        object = layer(Design.Field.OBJECT_IMAGE, design.objectImage, lenient);
+        trail = layer(Design.Field.TRAIL_IMAGE, design.trailImage, lenient);
+        background = layer(Design.Field.BACKGROUND_IMAGE, design.backgroundImage, lenient);
     }
 
-    private Artwork layer(String label, String reference, boolean lenient) throws IOException {
+    private Artwork layer(Design.Field field, String reference, boolean lenient) throws LayerException {
         try {
             return Artwork.load(reference);
         } catch (IOException | RuntimeException e) {
-            if (!lenient) throw e;
-            skippedLayers.add(label + ": " + e.getMessage());
+            String message = field.label() + ": " + e.getMessage();
+            if (!lenient) throw new LayerException(field, message, e);
+            layerProblems.add(new Design.Problem(field, message));
             return null;
         }
     }
 
+    /** The layers left out of a lenient painter, with the field each belongs to; empty when everything loaded. */
+    public List<Design.Problem> layerProblems() { return List.copyOf(layerProblems); }
+
     /** Human-readable reasons for layers left out of a lenient painter; empty when everything loaded. */
-    public List<String> skippedLayers() { return List.copyOf(skippedLayers); }
+    public List<String> skippedLayers() { return layerProblems.stream().map(Design.Problem::message).toList(); }
 
     /** Bars shorter than this are drawn as a plain fill: artwork is unreadable at that size. */
     static final int MIN_ARTWORK_HEIGHT = 12;
