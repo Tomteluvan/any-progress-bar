@@ -11,6 +11,7 @@ import com.intellij.ui.SimpleListCellRenderer;
 import com.intellij.ui.components.JBList;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.accessibility.AccessibleAnnouncerUtil;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
@@ -19,6 +20,7 @@ import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
+import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -70,6 +72,8 @@ public final class DesignConfigurable implements Configurable {
         model = new DefaultListModel<>();
         designs = new JBList<>(model);
         designs.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        designs.getAccessibleContext().setAccessibleName("Designs");
+        designs.getAccessibleContext().setAccessibleDescription("Your design library. Select a design to edit it.");
         designs.addListSelectionListener(e -> {
             if (!updating && !e.getValueIsAdjusting() && selected() != null) {
                 draft.selectedId = selected().id;
@@ -82,15 +86,15 @@ public final class DesignConfigurable implements Configurable {
         scroll.setPreferredSize(JBUI.size(200, 300));
         library.add(scroll);
         JPanel actions = new JPanel(new GridLayout(0, 1, JBUI.scale(4), JBUI.scale(4)));
-        actions.add(button("New", () -> add(new Design())));
-        actions.add(button("Duplicate", () -> {
+        actions.add(button("New", KeyEvent.VK_W, () -> add(new Design())));
+        actions.add(button("Duplicate", KeyEvent.VK_A, () -> {
             if (selected() == null) return;
             Design copy = selected().copy();
             copy.id = UUID.randomUUID().toString();
             copy.name += " (copy)";
             add(copy);
         }));
-        actions.add(button("Delete", () -> {
+        actions.add(button("Delete", KeyEvent.VK_E, () -> {
             if (model.size() == 1) {
                 Messages.showInfoMessage(root, "Keep at least one design.", getDisplayName());
                 return;
@@ -102,7 +106,7 @@ public final class DesignConfigurable implements Configurable {
             designs.setSelectedIndex(Math.min(index, model.size() - 1));
             dirty = true;
         }));
-        actions.add(button("Restore presets", () -> {
+        actions.add(button("Restore presets", KeyEvent.VK_R, () -> {
             if (Messages.showYesNoDialog(root, "Replace your design library with the built-in presets?",
                     getDisplayName(), Messages.getQuestionIcon()) != Messages.YES) return;
             draft.designs = new java.util.ArrayList<>(Design.presets());
@@ -110,8 +114,8 @@ public final class DesignConfigurable implements Configurable {
             populate();
             dirty = true;
         }));
-        actions.add(button("Export...", this::exportSelected));
-        actions.add(button("Import...", this::importDesign));
+        actions.add(button("Export...", KeyEvent.VK_X, this::exportSelected));
+        actions.add(button("Import...", KeyEvent.VK_I, this::importDesign));
         library.add(actions, BorderLayout.SOUTH);
         content.add(library, BorderLayout.WEST);
 
@@ -133,32 +137,44 @@ public final class DesignConfigurable implements Configurable {
         JPanel colors = new JPanel(new BorderLayout(JBUI.scale(4), 0));
         colors.add(color);
         swatch = new ColorPanel();
+        name(swatch, "Pick background colour");
         swatch.addActionListener(e -> {
             Color chosen = swatch.getSelectedColor();
             if (chosen != null) color.setText(String.format("#%06X", chosen.getRGB() & 0xffffff));
         });
         JPanel colorButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0));
         colorButtons.add(swatch);
-        colorButtons.add(button("Use IDE colour", () -> color.setText("")));
+        colorButtons.add(button("Use IDE colour", KeyEvent.VK_U, () -> color.setText("")));
         colors.add(colorButtons, BorderLayout.EAST);
         row(editor, 4, "Background colour", 'C', colors, color);
-        row(editor, 5, "Object size (px, 8-64)", 'S', size, size);
-        row(editor, 6, "Speed (%, 10-400)", 'P', speed, speed);
-        row(editor, 7, "Trail length (px, 0-600)", 'L', trailLength, trailLength);
+        row(editor, 5, "Object size (px, 8-64)", 'S', size, spinnerField(size));
+        row(editor, 6, "Speed (%, 10-400)", 'P', speed, spinnerField(speed));
+        row(editor, 7, "Trail length (px, 0-600)", 'L', trailLength, spinnerField(trailLength));
         size.setToolTipText("Height of the object in pixels (8-64); capped to the bar height.");
         speed.setToolTipText("Percent. 100 = one lap every 4 seconds for indeterminate bars (10-400).");
         trailLength.setToolTipText("Pixels of trail drawn behind the object (0-600); 0 hides the trail.");
         motion.setToolTipText("How the object moves. Ping-pong only changes indeterminate bars.");
         color.setToolTipText("#RRGGBB, or empty to use the IDE colour.");
+        describe(spinnerField(size), size.getToolTipText());
+        describe(spinnerField(speed), speed.getToolTipText());
+        describe(spinnerField(trailLength), trailLength.getToolTipText());
+        describe(motion, motion.getToolTipText());
+        describe(color, color.getToolTipText());
+        describe(name, "The name shown in the design list.");
         row(editor, 8, "Motion", 'M', motion, motion);
         row(editor, 9, "", new JLabel("Clear any image to omit it. Empty colour uses the IDE colour."));
         row(editor, 10, "", new JLabel("Background images overlay the colour. PNG, JPG and static SVG supported."));
         error = new JLabel(" ");
         error.setForeground(JBUI.CurrentTheme.Label.errorForeground());
+        error.getAccessibleContext().setAccessibleName("Validation message");
         row(editor, 11, "", error);
         preview = new Preview();
+        preview.getAccessibleContext().setAccessibleName("Live preview");
+        preview.getAccessibleContext().setAccessibleDescription(
+            "Animated preview of the selected design as indeterminate, determinate, compact and status bar progress bars.");
         row(editor, 12, "Live preview", preview);
         JSlider progress = new JSlider(0, 100, 65);
+        describe(progress, "Progress shown in the determinate previews, 0 to 100 percent.");
         progress.addChangeListener(e -> { preview.progress = progress.getValue() / 100.0; preview.repaint(); });
         row(editor, 13, "Determinate progress", 'D', progress, progress);
         GridBagConstraints filler = new GridBagConstraints();
@@ -183,6 +199,28 @@ public final class DesignConfigurable implements Configurable {
         JButton button = new JButton(label);
         button.addActionListener(e -> action.run());
         return button;
+    }
+
+    /** A button whose mnemonic is the given {@link KeyEvent} key; the key must occur in the label so it is underlined. */
+    private static JButton button(String label, int mnemonic, Runnable action) {
+        JButton button = button(label, action);
+        button.setMnemonic(mnemonic);
+        return button;
+    }
+
+    private static void describe(JComponent component, String description) {
+        var context = component.getAccessibleContext(); // some platform components do not provide one
+        if (context != null) context.setAccessibleDescription(description);
+    }
+
+    private static void name(JComponent component, String accessibleName) {
+        var context = component.getAccessibleContext();
+        if (context != null) context.setAccessibleName(accessibleName);
+    }
+
+    /** The text field inside a spinner: what a label's mnemonic should focus and what assistive technology reads. */
+    private static JComponent spinnerField(JSpinner spinner) {
+        return ((JSpinner.DefaultEditor) spinner.getEditor()).getTextField();
     }
 
     private static JTextField imageField() {
@@ -213,6 +251,9 @@ public final class DesignConfigurable implements Configurable {
         browse.getAccessibleContext().setAccessibleName("Browse for " + layer);
         JButton clear = button("Clear", () -> { assign.accept(""); field.setText(""); changed(); });
         clear.getAccessibleContext().setAccessibleName("Clear " + layer);
+        browse.getAccessibleContext().setAccessibleDescription("Choose a PNG, JPG or SVG file for the " + layer + ".");
+        clear.getAccessibleContext().setAccessibleDescription("Remove the " + layer + " from this design.");
+        field.getAccessibleContext().setAccessibleDescription("Location of the stored " + layer + "; empty when there is none.");
         buttons.add(browse);
         buttons.add(clear);
         row.add(buttons, BorderLayout.EAST);
@@ -306,12 +347,21 @@ public final class DesignConfigurable implements Configurable {
     private void updatePreview() {
         try {
             preview.painter = new ProgressPainter(selected());
-            error.setText(" ");
+            setError(null);
         } catch (IOException | IllegalArgumentException e) {
             preview.painter = null;
-            error.setText(e.getMessage());
+            setError(e.getMessage());
         }
         preview.repaint();
+    }
+
+    /** Shows a validation message, and has assistive technology read it out when it appears or changes. */
+    private void setError(String message) {
+        String text = message == null || message.isBlank() ? " " : message;
+        if (text.equals(error.getText())) return;
+        error.setText(text);
+        error.getAccessibleContext().setAccessibleDescription(text.isBlank() ? null : text);
+        if (!text.isBlank() && AccessibleAnnouncerUtil.isAnnouncingAvailable()) AccessibleAnnouncerUtil.announce(error, text, true);
     }
 
     private void showDesign() {

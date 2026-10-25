@@ -114,6 +114,63 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         } finally { configurable.disposeUIResources(); }
     }
 
+    public void testEditorControlsAreLabelledForAssistiveTechnology() {
+        DesignConfigurable configurable = new DesignConfigurable();
+        try {
+            JComponent root = configurable.createComponent();
+            var labels = new java.util.ArrayList<javax.swing.JLabel>();
+            var buttons = new java.util.ArrayList<JButton>();
+            collect(root, labels, buttons);
+            var labelled = labels.stream().filter(l -> l.getLabelFor() != null).toList();
+            assertEquals(10, labelled.size());
+            for (var label : labelled) {
+                assertTrue(label.getText(), label.getLabelFor().isFocusable());
+                assertTrue(label.getText(), label.getDisplayedMnemonic() != 0);
+            }
+            // a mnemonic can only be used once per window
+            var mnemonics = new java.util.HashSet<Integer>();
+            for (var label : labelled) assertTrue("duplicate mnemonic on " + label.getText(), mnemonics.add(Character.toUpperCase(label.getDisplayedMnemonic())));
+            for (var button : buttons) {
+                if (button.getMnemonic() != 0) assertTrue("duplicate mnemonic on " + button.getText(), mnemonics.add(Character.toUpperCase(button.getMnemonic())));
+            }
+            for (String text : new String[]{"New", "Duplicate", "Delete", "Restore presets", "Export...", "Import...", "Use IDE colour"}) {
+                assertTrue(text + " needs a mnemonic", findButton(root, text).getMnemonic() != 0);
+            }
+            // the repeated Browse and Clear buttons say which layer they act on
+            var names = new java.util.HashSet<String>();
+            for (var button : buttons) {
+                if (button.getText().equals("Browse") || button.getText().equals("Clear")) {
+                    assertTrue(names.add(button.getAccessibleContext().getAccessibleName()));
+                    assertNotNull(button.getAccessibleContext().getAccessibleDescription());
+                }
+            }
+            assertEquals(6, names.size());
+            assertTrue(names.contains("Browse for trail image"));
+            assertTrue(names.contains("Clear background image"));
+        } finally { configurable.disposeUIResources(); }
+    }
+
+    public void testValidationMessagesAreExposedToAssistiveTechnology() {
+        DesignConfigurable configurable = new DesignConfigurable();
+        try {
+            JComponent root = configurable.createComponent();
+            findEditableField(root, "#242437").setText("not a color");
+            var labels = new java.util.ArrayList<javax.swing.JLabel>();
+            collect(root, labels, new java.util.ArrayList<>());
+            var error = labels.stream().filter(l -> "Validation message".equals(l.getAccessibleContext().getAccessibleName())).findFirst().orElseThrow();
+            assertTrue(error.getText().contains("#RRGGBB"));
+            assertEquals(error.getText(), error.getAccessibleContext().getAccessibleDescription());
+        } finally { configurable.disposeUIResources(); }
+    }
+
+    private static void collect(Container parent, java.util.List<javax.swing.JLabel> labels, java.util.List<JButton> buttons) {
+        for (Component component : parent.getComponents()) {
+            if (component instanceof javax.swing.JLabel label) labels.add(label);
+            if (component instanceof JButton button) buttons.add(button);
+            if (component instanceof Container container) collect(container, labels, buttons);
+        }
+    }
+
     public void testInvalidColorBlocksApplyAndResetDiscardsDraft() throws ConfigurationException {
         DesignConfigurable configurable = new DesignConfigurable();
         try {
