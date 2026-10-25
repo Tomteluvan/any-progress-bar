@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.6.0
+- Export and import your whole design library as one `.apblibrary` file, with Merge (skips designs you already have) or Replace on import.
+- Selecting a design in the list no longer changes the active one: the active design has a badge, and **Use this design** switches to it. The editor only reports changes when something really differs from the saved settings.
+- Validation errors now appear next to the field that caused them, the field is highlighted, the preview keeps the last valid version, and a broken image names its layer.
+- The editor scrolls in small settings windows, respects large UI scales, and has mnemonics, accessible names and announced validation messages.
+- Objects using hop, bob, wiggle or spin are sized so they are no longer clipped by the bar.
+- Invalid saved settings are repaired instead of discarded: valid designs are kept, the selection is fixed, a copy of the original is saved and a notification explains what changed.
+- Importing a design pack now has total size, entry count, descriptor size and name length limits.
+- Images are read once and the stored bytes are exactly the validated bytes. Unused imported images are cleaned up after Apply and at startup.
+- Image loading, import and export no longer run on the UI thread, and can be cancelled.
+- Progress bars use only the shared animation clock, including vertical bars and bars that become indeterminate later.
+- The README documents the current release process, recovery steps and plugin signing.
+
 ## 1.5.1
 - Internal: updated build dependencies (JUnit 6, Gradle 9.8.2, changelog plugin) and the GitHub Actions used by CI. Patch versions are not published to the Marketplace.
 
