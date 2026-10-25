@@ -9,7 +9,6 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.ui.ColoredListCellRenderer;
 import com.intellij.ui.ColorPanel;
 import com.intellij.ui.DocumentAdapter;
-import com.intellij.ui.SimpleListCellRenderer;
 import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.components.JBList;
 import com.intellij.ui.components.JBScrollPane;
@@ -171,7 +170,12 @@ public final class DesignConfigurable implements Configurable {
         speed = new JSpinner(new SpinnerNumberModel(100, 10, 400, 10));
         trailLength = new JSpinner(new SpinnerNumberModel(160, 0, 600, 10));
         motion = new ComboBox<>(Design.Motion.values());
-        motion.setRenderer(SimpleListCellRenderer.create((label, value, index) -> label.setText(value == null ? "" : value.label())));
+        motion.setRenderer(new ColoredListCellRenderer<>() {
+            @Override protected void customizeCellRenderer(@NotNull JList<? extends Design.Motion> list, Design.Motion value,
+                                                           int index, boolean selected, boolean hasFocus) {
+                append(value == null ? "" : value.label());
+            }
+        });
         row(editor, 0, "Name", 'N', withError(Design.Field.NAME, name, name), name);
         row(editor, 1, "Object image", 'O', withError(Design.Field.OBJECT_IMAGE,
             imageRow("object image", object, value -> selected().objectImage = value), object), object);

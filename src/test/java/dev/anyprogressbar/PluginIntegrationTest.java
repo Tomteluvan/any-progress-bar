@@ -113,6 +113,33 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         assertTrue("the broken design's result must never be published", installation.painter().skippedLayers().isEmpty());
     }
 
+    public void testEnablingThePluginWithoutARestartInstallsTheProgressBars() {
+        ProgressInstallation installation = ProgressInstallation.getInstance();
+        PlatformTestUtil.waitForFuture(installation.reload(), 10_000);
+        // simulate a plugin that was just enabled: nothing is installed yet
+        ProgressSettings.Data off = ProgressSettings.getInstance().getState().copy();
+        off.enabled = false;
+        ProgressSettings.getInstance().loadState(off);
+        PlatformTestUtil.waitForFuture(installation.reload(), 10_000);
+        assertNull(installation.painter());
+        off.enabled = true;
+        ProgressSettings.getInstance().loadState(off);
+
+        var listener = new ProgressPluginListener();
+        var other = com.intellij.ide.plugins.PluginManagerCore.getPlugin(com.intellij.openapi.extensions.PluginId.getId("com.intellij"));
+        if (other != null) {
+            listener.pluginLoaded(other);
+            assertNull("other plugins being loaded must not install anything", installation.painter());
+        }
+        var ours = com.intellij.ide.plugins.PluginManagerCore.getPlugin(com.intellij.openapi.extensions.PluginId.getId(ProgressPluginListener.PLUGIN_ID));
+        if (ours != null) {
+            listener.pluginLoaded(ours);
+            awaitReload();
+            assertNotNull(installation.painter());
+            assertEquals(AnimalProgressBarUI.class.getName(), UIManager.get("ProgressBarUI"));
+        }
+    }
+
     public void testEditorCreatesAppliesDuplicatesAndDeletesDesigns() throws ConfigurationException {
         DesignConfigurable configurable = new DesignConfigurable();
         try {

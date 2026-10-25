@@ -17,5 +17,6 @@
     </extensions>
     <applicationListeners>
         <listener class="dev.anyprogressbar.ProgressAppListener" topic="com.intellij.ide.AppLifecycleListener"/>
+        <listener class="dev.anyprogressbar.ProgressPluginListener" topic="com.intellij.ide.plugins.DynamicPluginListener"/>
     </applicationListeners>
 </idea-plugin>
