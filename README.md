@@ -174,28 +174,65 @@ local build.
 
 ## Releasing
 
-Releases are published by the `release` job in `.github/workflows/ci.yml`; there is no separate
-tag-triggered workflow.
+Releases are published by the `release` job in `.github/workflows/ci.yml`. There is no separate
+tag-triggered workflow: pushing a `v<version>` tag does nothing, because the job creates the tag itself.
 
 1. Update `version` in `build.gradle.kts` and add a matching section to `CHANGELOG.md`
    (it becomes the Marketplace change notes).
 2. Push to `main`.
-3. When the build job passes and no GitHub release exists for that version yet, the release job
-   takes the plugin archive that the build job tested and verified (it does not rebuild it) and:
-   1. uploads it to the JetBrains Marketplace, using the `PUBLISH_TOKEN` repository secret, then
-   2. creates the `v<version>` tag and a GitHub release with the zip and a `SHA256SUMS` file attached.
+3. When the `build` job passes (tests, packaged-metadata check and `verifyPlugin`) and no GitHub
+   release exists for that version yet, the `release` job takes the plugin archive that the `build`
+   job tested and verified (it does not rebuild it) and, in this order:
+   1. creates the `v<version>` tag and a GitHub release with the zip and a `SHA256SUMS` file attached
+      (`gh release create`), then
+   2. uploads the same zip to the JetBrains Marketplace (`./gradlew publishPlugin -PpluginArchive=<zip> -x buildPlugin`),
+      authenticating with the `PUBLISH_TOKEN` repository secret, a token created in your JetBrains
+      Marketplace profile.
+
+The GitHub release comes first so that a failed release never leaves a Marketplace version without
+one. The Marketplace reviews uploads before a new version becomes visible to users, so a successful
+job does not mean the version is live yet.
 
 Pushes that do not change the version do not create a release, and neither do patch versions
 (`x.y.z` with `z` above 0, for example documentation-only updates): they run the normal build
 and verification but are never published. Only minor and major versions (`x.y.0`) are released.
 
-If the Marketplace upload fails, nothing is released and the next push retries. If the upload
-succeeds but creating the GitHub release fails, a retry would upload the same version to the
-Marketplace again and be rejected. In that case create the release by hand from the verified
-archive (`gh release create v<version> <zip> --target <commit>`) instead of re-running the job.
+### Recovering from a partly failed release
 
-The plugin is not signed yet; signing would need a certificate chain and private key added as
-repository secrets and the `signPlugin` task configured in `build.gradle.kts`.
+The job decides whether to release by looking for a GitHub release named `v<version>`, so a
+failure leaves one of these states:
+
+- **Failed before or while creating the GitHub release** (a red `build` job, a missing archive,
+  `gh release create` failing): nothing was published and no release exists, so fix the cause and
+  push again or re-run the failed jobs from the Actions page.
+- **The GitHub release exists but the Marketplace upload failed** (for example an expired
+  `PUBLISH_TOKEN` or a Marketplace outage): re-running the job does nothing, because it sees the
+  release and skips. First check the plugin's page on the Marketplace to make sure the version did not
+  arrive after all, since the Marketplace rejects a version it already has. If it is missing, either
+  - upload the already-verified archive by hand: download the zip from the release, check it against
+    `SHA256SUMS`, then run
+    `PUBLISH_TOKEN=<token> ./gradlew publishPlugin -PpluginArchive=<zip> -x buildPlugin`, or
+  - delete the release and its tag (`gh release delete v<version> --cleanup-tag`) and re-run the
+    `release` job, which then starts again from step 3.1. Only do this if the Marketplace does not
+    have the version.
+- **The release is wrong and must be replaced**: use a new version number. Marketplace versions
+  cannot be overwritten.
+
+### Plugin signing
+
+The plugin is not signed yet, and the release job does not need signing. JetBrains recommends signing
+and the Marketplace can verify a signature. Signing needs:
+
+- a certificate chain and a private key (and its password), generated as described in the
+  [JetBrains plugin signing documentation](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html),
+  stored as repository secrets;
+- a `signing { ... }` block in the `intellijPlatform` configuration of `build.gradle.kts` that reads
+  those secrets (the certificate chain, private key and password) from environment variables;
+- the `build` job running `signPlugin` and uploading the signed zip as the artifact, so the `release`
+  job publishes the exact archive that was verified and signed. `-PpluginArchive` must then point to
+  the signed zip rather than the unsigned one.
+
+Keep the private key out of the repository and out of logs: only pass it to the job through secrets.
 
 ## Project layout
 
