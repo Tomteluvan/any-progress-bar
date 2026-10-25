@@ -174,8 +174,19 @@ public final class Artwork {
         }
         Files.createDirectories(directory);
         Path target = directory.resolve(hash + "." + extension);
-        if (!Files.exists(target)) Files.write(target, bytes);
+        if (Files.exists(target)) {
+            // Re-using a stored image counts as using it now, so cleanup does not remove it while an edit holds it.
+            try { Files.setLastModifiedTime(target, java.nio.file.attribute.FileTime.from(java.time.Instant.now())); }
+            catch (IOException e) { /* only affects how soon an unused copy may be cleaned up */ }
+        } else {
+            Files.write(target, bytes);
+        }
         return target.toString();
+    }
+
+    /** Where imported images are stored; their names are the SHA-256 of their content. */
+    static Path assetsDirectory() {
+        return Path.of(com.intellij.openapi.application.PathManager.getConfigPath(), "any-progress-bar", "assets");
     }
 
     static String extensionOf(String filename) {

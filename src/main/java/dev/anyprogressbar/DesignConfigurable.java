@@ -1,6 +1,5 @@
 package dev.anyprogressbar;
 
-import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.ui.ComboBox;
@@ -289,7 +288,7 @@ public final class DesignConfigurable implements Configurable {
             if (chooser.showOpenDialog(root) != JFileChooser.APPROVE_OPTION) return;
             try {
                 String reference = Artwork.importFile(chooser.getSelectedFile().toPath(),
-                    Path.of(PathManager.getConfigPath(), "any-progress-bar", "assets"));
+                    Artwork.assetsDirectory());
                 assign.accept(reference);
                 field.setText(reference);
                 field.setToolTipText(reference);
@@ -411,7 +410,7 @@ public final class DesignConfigurable implements Configurable {
         LibraryPack.Imported imported;
         try {
             imported = LibraryPack.importFrom(chooser.getSelectedFile().toPath(),
-                Path.of(PathManager.getConfigPath(), "any-progress-bar", "assets"));
+                Artwork.assetsDirectory());
         } catch (IOException | IllegalArgumentException e) {
             Messages.showErrorDialog(root, e.getMessage(), "Could Not Import Library");
             return;
@@ -457,7 +456,7 @@ public final class DesignConfigurable implements Configurable {
         if (chooser.showOpenDialog(root) != JFileChooser.APPROVE_OPTION) return;
         try {
             add(DesignPack.importFrom(chooser.getSelectedFile().toPath(),
-                Path.of(PathManager.getConfigPath(), "any-progress-bar", "assets")));
+                Artwork.assetsDirectory()));
         } catch (IOException | IllegalArgumentException e) {
             Messages.showErrorDialog(root, e.getMessage(), "Could Not Import Design");
         }
@@ -571,6 +570,7 @@ public final class DesignConfigurable implements Configurable {
             if (draft.enabled) new ProgressPainter(draft.selected());
             ProgressSettings.getInstance().loadState(draft);
             ProgressInstallation.getInstance().reload();
+            AssetCleanup.cleanInBackground(draft.designs);
             designs.repaint();
             updateUseButton();
         } catch (IOException | IllegalArgumentException | java.text.ParseException e) {

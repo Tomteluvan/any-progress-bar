@@ -8,5 +8,6 @@ import org.jetbrains.annotations.NotNull;
 public final class ProgressAppListener implements AppLifecycleListener {
     @Override public void appFrameCreated(@NotNull List<String> commandLineArgs) {
         ProgressInstallation.getInstance().reload();
+        AssetCleanup.cleanInBackground(ProgressSettings.getInstance().getState().designs);
     }
 }
