@@ -147,13 +147,11 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
             assertFalse(configurable.isModified());
             findButton(root, "New").doClick();
             assertTrue(configurable.isModified());
-            findButton(root, "Use this design").doClick();
             configurable.apply();
             assertEquals(Design.presets().size() + 1, ProgressSettings.getInstance().getState().designs.size());
             assertEquals("My design", ProgressSettings.getInstance().getState().selected().name);
             assertFalse(configurable.isModified());
             findButton(root, "Duplicate").doClick();
-            findButton(root, "Use this design").doClick();
             configurable.apply();
             assertEquals(Design.presets().size() + 2, ProgressSettings.getInstance().getState().designs.size());
             assertEquals("My design (copy)", ProgressSettings.getInstance().getState().selected().name);
@@ -168,46 +166,23 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         return (javax.swing.JList<Design>) find(root, c -> c instanceof javax.swing.JList<?>);
     }
 
-    public void testBrowsingDesignsDoesNotChangeTheActiveOne() throws ConfigurationException {
-        DesignConfigurable configurable = new DesignConfigurable();
-        try {
-            JComponent root = configurable.createComponent();
-            String active = ProgressSettings.getInstance().getState().selectedId;
-            var list = designList(root);
-            assertEquals(active, list.getSelectedValue().id);
-            assertFalse("the active design is already in use", findButton(root, "Use this design").isEnabled());
-            for (int i = 0; i < list.getModel().getSize(); i++) list.setSelectedIndex(i);
-            assertFalse("browsing is not a modification", configurable.isModified());
-            list.setSelectedIndex(list.getModel().getSize() - 1);
-            assertTrue(findButton(root, "Use this design").isEnabled());
-            configurable.apply();
-            assertEquals("applying must keep the active design", active, ProgressSettings.getInstance().getState().selectedId);
-        } finally { configurable.disposeUIResources(); }
-    }
-
-    public void testUseThisDesignActivatesTheSelectedDesignAndMarksItInTheList() throws ConfigurationException {
+    public void testApplyActivatesTheSelectedDesign() throws ConfigurationException {
         DesignConfigurable configurable = new DesignConfigurable();
         try {
             JComponent root = configurable.createComponent();
             var list = designList(root);
             String original = ProgressSettings.getInstance().getState().selectedId;
+            assertEquals(original, list.getSelectedValue().id);
+            assertFalse(configurable.isModified());
             list.setSelectedIndex(2);
             Design other = list.getSelectedValue();
-            findButton(root, "Use this design").doClick();
-            assertTrue(configurable.isModified());
-            assertFalse(findButton(root, "Use this design").isEnabled());
-            var renderer = list.getCellRenderer();
-            var active = (javax.swing.JComponent) renderer.getListCellRendererComponent(list, other, 2, false, false);
-            assertTrue(active.toString().contains("Active") || active.getAccessibleContext().getAccessibleName().contains("Active"));
-            var inactive = (javax.swing.JComponent) renderer.getListCellRendererComponent(list, list.getModel().getElementAt(0), 0, false, false);
-            assertFalse(inactive.getAccessibleContext().getAccessibleName().contains("Active"));
+            assertTrue("selecting another design is a change", configurable.isModified());
             configurable.apply();
             assertEquals(other.id, ProgressSettings.getInstance().getState().selectedId);
             assertFalse(configurable.isModified());
-            // choosing the original again is a real change, and applying it switches back
+            // selecting the original again and applying switches back
             list.setSelectedValue(list.getModel().getElementAt(0), true);
             assertEquals(original, list.getSelectedValue().id);
-            findButton(root, "Use this design").doClick();
             assertTrue(configurable.isModified());
             configurable.apply();
             assertEquals(original, ProgressSettings.getInstance().getState().selectedId);
@@ -263,7 +238,7 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
             configurable.apply();
             var state = ProgressSettings.getInstance().getState();
             assertEquals(Design.presets().size() + 1, state.designs.size());
-            assertEquals("merging keeps the active design", "preset-cat", state.selectedId);
+            assertEquals("the first merged design is selected, so it becomes the active one", added.id, state.selectedId);
 
             Design only = new Design();
             only.name = "Only me";

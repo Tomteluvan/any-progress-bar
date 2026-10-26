@@ -9,7 +9,6 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.ui.ColoredListCellRenderer;
 import com.intellij.ui.ColorPanel;
 import com.intellij.ui.DocumentAdapter;
-import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.components.JBList;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
@@ -68,7 +67,6 @@ public final class DesignConfigurable implements Configurable {
     private javax.swing.Timer previewDebounce;
     private Preview preview;
     private boolean updating;
-    private JButton useButton;
 
     @Override public String getDisplayName() { return "Any Progress Bar"; }
 
@@ -97,17 +95,9 @@ public final class DesignConfigurable implements Configurable {
         designs.getAccessibleContext().setAccessibleName("Designs");
         designs.getAccessibleContext().setAccessibleDescription("Your design library. Select a design to edit it.");
         designs.addListSelectionListener(e -> {
-            // Selecting a design only chooses what to edit; "Use this design" is what makes it the active one.
-            if (!updating && !e.getValueIsAdjusting() && selected() != null) showDesign();
-        });
-        designs.setCellRenderer(new ColoredListCellRenderer<>() {
-            @Override protected void customizeCellRenderer(@NotNull JList<? extends Design> list, Design value, int index,
-                                                           boolean selected, boolean hasFocus) {
-                if (value == null) return;
-                boolean active = draft != null && value.id.equals(draft.selectedId);
-                append(value.name == null || value.name.isBlank() ? "(unnamed)" : value.name,
-                    active ? SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES : SimpleTextAttributes.REGULAR_ATTRIBUTES);
-                if (active) append("  Active", SimpleTextAttributes.GRAYED_SMALL_ATTRIBUTES);
+            if (!updating && !e.getValueIsAdjusting() && selected() != null) {
+                draft.selectedId = selected().id; // Apply makes the selected design the active one
+                showDesign();
             }
         });
         JPanel library = new JPanel(new BorderLayout(JBUI.scale(6), JBUI.scale(6)));
@@ -115,14 +105,6 @@ public final class DesignConfigurable implements Configurable {
         scroll.setPreferredSize(JBUI.size(200, 300));
         library.add(scroll);
         JPanel actions = new JPanel(new GridLayout(0, 1, JBUI.scale(4), JBUI.scale(4)));
-        useButton = button("Use this design", KeyEvent.VK_G, () -> {
-            if (selected() == null) return;
-            draft.selectedId = selected().id;
-            designs.repaint();
-            updateUseButton();
-        });
-        useButton.getAccessibleContext().setAccessibleDescription("Make the selected design the one used for progress bars.");
-        actions.add(useButton);
         actions.add(button("New", KeyEvent.VK_W, () -> add(new Design())));
         actions.add(button("Duplicate", KeyEvent.VK_A, () -> {
             if (selected() == null) return;
@@ -138,13 +120,11 @@ public final class DesignConfigurable implements Configurable {
             }
             int index = designs.getSelectedIndex();
             if (index < 0) return;
-            boolean wasActive = draft.designs.get(index).id.equals(draft.selectedId);
             draft.designs.remove(index);
             model.remove(index);
             int next = Math.min(index, model.size() - 1);
-            if (wasActive) draft.selectedId = draft.designs.get(next).id; // the neighbour takes over as the active design
+            draft.selectedId = draft.designs.get(next).id;
             designs.setSelectedIndex(next);
-            designs.repaint();
         }));
         actions.add(button("Restore presets", KeyEvent.VK_R, () -> {
             if (Messages.showYesNoDialog(root, "Replace your design library with the built-in presets?",
@@ -383,11 +363,6 @@ public final class DesignConfigurable implements Configurable {
         designs.setSelectedValue(design, true);
     }
 
-    private void updateUseButton() {
-        Design design = selected();
-        useButton.setEnabled(design != null && !design.id.equals(draft.selectedId));
-    }
-
     private void changed() {
         if (updating || selected() == null) return;
         Design d = selected();
@@ -490,7 +465,7 @@ public final class DesignConfigurable implements Configurable {
         else if (answer == 1) replaceLibrary(imported);
     }
 
-    /** Adds the designs a merge found to be new; the active design stays as it is. */
+    /** Adds the designs a merge found to be new and selects the first of them. */
     void mergeImported(LibraryPack.MergePlan plan) {
         for (Design design : plan.additions()) {
             draft.designs.add(design);
@@ -661,7 +636,6 @@ public final class DesignConfigurable implements Configurable {
         } finally { updating = false; }
         preview.painter = null; // a different design must never show the previous one's preview
         builtKey = "";
-        updateUseButton();
         updatePreview();
     }
 
@@ -703,8 +677,6 @@ public final class DesignConfigurable implements Configurable {
             ProgressSettings.getInstance().loadState(draft);
             ProgressInstallation.getInstance().reload();
             AssetCleanup.cleanInBackground(draft.designs);
-            designs.repaint();
-            updateUseButton();
         } catch (ProcessCanceledException cancelled) {
             throw new ConfigurationException("Applying was cancelled.");
         } catch (IOException | IllegalArgumentException | java.text.ParseException e) {

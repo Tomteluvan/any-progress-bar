@@ -1,8 +1,12 @@
 # Changelog
 
+## 1.7.0
+- Selecting a design in the list makes it the active one again once you click Apply; the separate "Use this design" button and Active badge are gone.
+- Internal: replaced the deprecated combo box renderer and the plugin now installs correctly when loaded dynamically.
+
 ## 1.6.0
 - Export and import your whole design library as one `.apblibrary` file, with Merge (skips designs you already have) or Replace on import.
-- Selecting a design in the list no longer changes the active one: the active design has a badge, and **Use this design** switches to it. The editor only reports changes when something really differs from the saved settings.
+- The editor only reports changes when something really differs from the saved settings.
 - Validation errors now appear next to the field that caused them, the field is highlighted, the preview keeps the last valid version, and a broken image names its layer.
 - The editor scrolls in small settings windows, respects large UI scales, and has mnemonics, accessible names and announced validation messages.
 - Objects using hop, bob, wiggle or spin are sized so they are no longer clipped by the bar.

@@ -86,8 +86,7 @@ Open **Settings > Appearance & Behavior > Any Progress Bar**.
 
 ![The Any Progress Bar editor in IntelliJ](docs/in-editor-example.png)
 
-- Select a design in the list to edit it. The active design (the one used for progress bars) is
-  shown in bold with an **Active** badge; click **Use this design**, then **Apply**, to switch.
+- Select a design from the list and click **Apply** to make it the active one.
 - **New** and **Duplicate** create a design; **Delete** removes one.
 - **Export...** saves a design, including its images, as a shareable `.apbdesign` file;
   **Import...** adds one to the library.
