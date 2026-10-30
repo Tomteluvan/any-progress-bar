@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.1
+- Internal: releases are now signed with a plugin signing certificate.
+
 ## 1.7.0
 - Selecting a design in the list makes it the active one again once you click Apply; the separate "Use this design" button and Active badge are gone.
 - Internal: replaced the deprecated combo box renderer and the plugin now installs correctly when loaded dynamically.

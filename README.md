@@ -219,19 +219,28 @@ failure leaves one of these states:
 
 ### Plugin signing
 
-The plugin is not signed yet, and the release job does not need signing. JetBrains recommends signing
-and the Marketplace can verify a signature. Signing needs:
+Releases are signed. The `build` job runs `signPlugin` and `verifyPluginSignature`, uploads both zips as
+the artifact, and the `release` job publishes `any-progress-bar-<version>-signed.zip` (and fails if it is
+missing). Without the secrets below (for example on pull requests from forks) the build stays unsigned and
+nothing is released.
 
-- a certificate chain and a private key (and its password), generated as described in the
-  [JetBrains plugin signing documentation](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html),
-  stored as repository secrets;
-- a `signing { ... }` block in the `intellijPlatform` configuration of `build.gradle.kts` that reads
-  those secrets (the certificate chain, private key and password) from environment variables;
-- the `build` job running `signPlugin` and uploading the signed zip as the artifact, so the `release`
-  job publishes the exact archive that was verified and signed. `-PpluginArchive` must then point to
-  the signed zip rather than the unsigned one.
+The `signing { ... }` block in `build.gradle.kts` reads three environment variables, which CI fills from
+repository secrets:
 
-Keep the private key out of the repository and out of logs: only pass it to the job through secrets.
+| Secret | Content |
+|---|---|
+| `CERTIFICATE_CHAIN` | the certificate chain (`chain.crt`) |
+| `PRIVATE_KEY` | the encrypted private key (`private_encrypted.pem`) |
+| `PRIVATE_KEY_PASSWORD` | the key's password |
+
+To sign locally, export the same three variables and run `./gradlew signPlugin` (then, separately,
+`./gradlew verifyPluginSignature`).
+
+Generate the key material as described in the
+[JetBrains plugin signing documentation](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html)
+(`openssl genpkey` with `-aes-256-cbc`, then `openssl req -x509`). Keep the private key and password out of
+the repository and out of logs, and back them up: the Marketplace expects later versions to be signed with
+the same certificate. When the certificate expires, create a new one and replace the secrets.
 
 ## Project layout
 
