@@ -15,7 +15,7 @@ class ProgressPainterTest {
 
     @Test void allUniquePresetsHaveWorkingArtworkAndAnimation() throws IOException {
         var presets = Design.presets();
-        assertTrue(presets.size() >= 20);
+        assertTrue(presets.size() >= 70);
         assertEquals(presets.size(), presets.stream().map(d -> d.id).distinct().count());
         for (Design d : presets) {
             d.validate();

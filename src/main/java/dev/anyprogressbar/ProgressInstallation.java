@@ -21,7 +21,7 @@ import javax.swing.UIManager;
 @Service(Service.Level.APP)
 public final class ProgressInstallation implements Disposable {
     private static final String KEY = "ProgressBarUI";
-    private static final String CUSTOM = AnimalProgressBarUI.class.getName();
+    private static final String CUSTOM = DesignProgressBarUI.class.getName();
     private Object original;
     private Object previousClass;
     private boolean installed;
@@ -114,7 +114,7 @@ public final class ProgressInstallation implements Disposable {
             }
             if (painter != null) {
                 if (!installed) previousClass = UIManager.getDefaults().get(CUSTOM);
-                UIManager.put(CUSTOM, AnimalProgressBarUI.class);
+                UIManager.put(CUSTOM, DesignProgressBarUI.class);
                 UIManager.put(KEY, CUSTOM);
                 installed = true;
             } else {

@@ -47,6 +47,14 @@ class DesignPackTest {
         return map;
     }
 
+    @Test void keepsTheCategoryThroughExportAndImport() throws IOException {
+        Design design = Design.presets().stream().filter(d -> Design.SPRING.equals(d.category)).findFirst().orElseThrow();
+        Path file = temp.resolve("spring." + DesignPack.EXTENSION);
+        DesignPack.export(design, file);
+        assertEquals(Design.SPRING, DesignPack.importFrom(file, assets()).category);
+        assertEquals("", DesignPack.importFrom(pack(entries("name=Tiny\n")), assets()).category);
+    }
+
     @Test void importsAMinimalPackWithDefaults() throws IOException {
         Design d = DesignPack.importFrom(pack(entries("name=Tiny\n")), assets());
         assertEquals("Tiny", d.name);

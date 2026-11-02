@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="124" height="52" viewBox="0 0 124 52">
+  <path d="M0 38Q32 32 62 38T126 38" fill="none" stroke="#F06A7A" stroke-width="2" stroke-linecap="round" opacity="0.35" />
+  <path transform="translate(14 26) scale(0.9)" d="M0 -8Q-5 0 0 3 5 0 0 -8Z" fill="#2F2A2A"/>
+  <path transform="translate(30 18) scale(0.9)" d="M0 -8Q-5 0 0 3 5 0 0 -8Z" fill="#2F2A2A"/>
+  <path transform="translate(46 32) scale(0.9)" d="M0 -8Q-5 0 0 3 5 0 0 -8Z" fill="#2F2A2A"/>
+  <g transform="translate(76 22) rotate(-10)">
+  <path d="M-12 -4Q0 18 12 -4Z" fill="#3F8A4A"/>
+  <path d="M-10 -4Q0 14 10 -4Z" fill="#F06A7A"/>
+  <path d="M-12 -4H12" stroke="#2F6A3A" stroke-width="1.600"/>
+  <circle cx="-3" cy="2" r="1" fill="#2F2A2A"/>
+  <circle cx="3" cy="1" r="1" fill="#2F2A2A"/>
+  </g>
+  <path transform="translate(100 14) scale(1)" d="M0 -8Q-5 0 0 3 5 0 0 -8Z" fill="#F06A7A"/>
+  <path transform="translate(108 30) scale(0.8)" d="M0 -8Q-5 0 0 3 5 0 0 -8Z" fill="#F06A7A"/>
+  <path transform="translate(120 20) scale(0.9)" d="M0 -8Q-5 0 0 3 5 0 0 -8Z" fill="#2F2A2A"/>
+  <circle cx="62" cy="38" r="1.5" fill="#F4DD91"/>
+</svg>

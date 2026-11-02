@@ -5,7 +5,7 @@
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/Tomteluvan)
 
 An IntelliJ IDEA plugin that replaces the standard progress bar with animated,
-themeable ones. It ships with twenty presets (animals, everyday objects, Tung Tung Sahur and playful character themes)
+themeable ones. It ships with seventy presets (animals, everyday objects, Tung Tung Sahur, playful characters and four seasonal collections)
 and includes an in-IDE editor for creating your own designs from PNG, JPG or SVG images.
 
 ## Presets
@@ -56,6 +56,85 @@ The Tung Tung Tung Sahur character is an original drawing of an internet meme ch
 | Ramen racer | Noodle bowl on wheels | Noodles and scallions | Wiggle |
 | The frog of compile | Frog wizard riding a broom | Lily pads and magic sparkles | Bob |
 | Disco duck | Duck on roller skates | Music notes and dance-floor sparkles | Bounce |
+
+**Even more character themes**
+
+| Theme | Object | Trail | Motion |
+|---|---|---|---|
+| Sloth skater | Sloth cruising on a skateboard | Drifting leaves | Glide |
+| Pizza scooter | Pizza slice on a kick scooter | Pepperoni and melted cheese | Bounce |
+| Octopus barista | Octopus serving coffee | Coffee beans and steam | Wiggle |
+| Ghost commuter | Ghost in a bowler hat with a briefcase | Wisps, bats and candy corn | Bob |
+| Dino on a bike | T. rex on a tiny bicycle | Footprints and dust | Hop |
+| Toaster jetpack | Toaster with a jetpack | Smoke and toast crumbs | Bob |
+| Narwhal submarine | Narwhal with a snorkel | Bubbles and fish | Bob |
+| Snowman surfer | Snowman on a surfboard | Snowflakes and spray | Glide |
+| Sushi train | Smiling salmon nigiri | Soy drops and rice | Glide |
+| Gingerbread dash | Running gingerbread man | Sprinkles and gumdrops | Bounce |
+
+**Seasonal collections**
+
+Ten presets each for autumn, winter and Christmas, spring and summer. In the editor they are listed under a category that you can open and close; the presets above are always shown.
+
+*Autumn*
+
+| Preset | Trail | Motion |
+|---|---|---|
+| Hedgehog & apples | Maple leaves | Wiggle |
+| Pumpkin cart | Pumpkin vine | Bounce |
+| Scarecrow & crow | Straw wisps | Hop |
+| Acorn squirrel | Acorn trail | Bounce |
+| Mushroom gnome | Spore puffs | Bob |
+| Cauldron cat | Potion fizz | Bob |
+| Apple pie | Cinnamon steam | Bounce |
+| Wise owl | Feather drift | Glide |
+| Harvest tractor | Wheat dust | Wiggle |
+| Turkey in sneakers | Corn feathers | Hop |
+
+*Winter & Christmas*
+
+| Preset | Trail | Motion |
+|---|---|---|
+| Santa's sleigh | Sleigh stars | Glide |
+| Rudolph | Red glow | Bounce |
+| Elf on a sled | Candy canes | Glide |
+| Walking Christmas tree | Ornaments | Wiggle |
+| Penguin skater | Ice crystals | Glide |
+| Polar bear cocoa | Marshmallows | Bob |
+| Snow globe | Glitter snow | Pulse |
+| Gift box | Ribbons confetti | Bounce |
+| Friendly yeti | Snowballs | Wiggle |
+| Cardinal & wreath | Holly berries | Hop |
+
+*Spring*
+
+| Preset | Trail | Motion |
+|---|---|---|
+| Easter bunny | Painted eggs | Bounce |
+| Ladybug | Petals drift | Wiggle |
+| Duckling in rain boots | Puddle splash | Hop |
+| Bumblebee | Pollen flowers | Bob |
+| Cloud lamb | Clover meadow | Bounce |
+| Watering can | Sprouts | Wiggle |
+| Butterfly | Flutter path | Pulse |
+| Garden gnome | Tulips | Wiggle |
+| Robin & blossoms | Blossom twigs | Glide |
+| Sunny cloud | Rain rainbow | Bob |
+
+*Summer*
+
+| Preset | Trail | Motion |
+|---|---|---|
+| Ice cream cone | Melt drops | Bounce |
+| Beach crab | Shell prints | Hop |
+| Flamingo float | Ripple waves | Bob |
+| Cool watermelon | Melon seeds | Bounce |
+| Beach ball | Sand stars | Spin |
+| Sunshine | Sun rays | Spin |
+| Campfire s'more | Sparks smores | Pulse |
+| Lemonade | Lemon slices | Bob |
+| Sea turtle | Tide foam | Glide |
+| Sailboat | Gulls waves | Glide |
 
 </details>
 

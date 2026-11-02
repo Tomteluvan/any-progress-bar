@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="124" height="52" viewBox="0 0 124 52">
+  <path d="M0 38Q32 32 62 38T126 38" fill="none" stroke="#CFE6F5" stroke-width="2" stroke-linecap="round" opacity="0.45" />
+  <g transform="translate(10 18) rotate(-12)">
+  <path d="M0 14V2Q0 -6 6 -6 12 -6 12 0" fill="none" stroke="#F7F3EA" stroke-width="3.600" stroke-linecap="round"/>
+  <path d="M0 14V2Q0 -6 6 -6 12 -6 12 0" fill="none" stroke="#D9574B" stroke-width="3.600" stroke-linecap="round" stroke-dasharray="2.200 3.400"/>
+  </g>
+  <path d="M30 42H62M30 46H62" fill="none" stroke="#CFE6F5" stroke-width="1.6" stroke-linecap="round" opacity="0.6" />
+  <g transform="translate(72 14) rotate(15)">
+  <path d="M0 14V2Q0 -6 6 -6 12 -6 12 0" fill="none" stroke="#F7F3EA" stroke-width="3.600" stroke-linecap="round"/>
+  <path d="M0 14V2Q0 -6 6 -6 12 -6 12 0" fill="none" stroke="#D9574B" stroke-width="3.600" stroke-linecap="round" stroke-dasharray="2.200 3.400"/>
+  </g>
+  <g transform="translate(100 22) rotate(-20)">
+  <path d="M0 14V2Q0 -6 6 -6 12 -6 12 0" fill="none" stroke="#F7F3EA" stroke-width="3.600" stroke-linecap="round"/>
+  <path d="M0 14V2Q0 -6 6 -6 12 -6 12 0" fill="none" stroke="#D9574B" stroke-width="3.600" stroke-linecap="round" stroke-dasharray="2.200 3.400"/>
+  </g>
+  <path transform="translate(50 16) scale(0.8)" d="M0 -6L1.6 -1.6 6 0 1.6 1.6 0 6 -1.6 1.6 -6 0 -1.6 -1.6Z" fill="#F4F8FF"/>
+  <circle cx="112" cy="8" r="1.5" fill="#F4F8FF"/>
+  <circle cx="36" cy="10" r="1.4" fill="#F4F8FF"/>
+</svg>

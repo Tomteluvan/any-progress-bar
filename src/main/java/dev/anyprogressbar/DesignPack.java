@@ -76,6 +76,7 @@ public final class DesignPack {
         props.setProperty("speed", Integer.toString(design.speed));
         props.setProperty("trailLength", Integer.toString(design.trailLength));
         props.setProperty("motion", design.motion.name());
+        if (!design.category.isBlank()) props.setProperty("category", design.category);
         String[] references = {design.objectImage, design.trailImage, design.backgroundImage};
         try (var zip = new ZipOutputStream(out)) {
             for (int i = 0; i < LAYERS.length; i++) {
@@ -159,6 +160,10 @@ public final class DesignPack {
             design.speed = Integer.parseInt(props.getProperty("speed", "100"));
             design.trailLength = Integer.parseInt(props.getProperty("trailLength", "160"));
             design.motion = Design.Motion.valueOf(props.getProperty("motion", "GLIDE"));
+            design.category = props.getProperty("category", "");
+            if (design.category.length() > MAX_NAME_LENGTH) {
+                throw new IOException("Invalid design file: the category is longer than " + MAX_NAME_LENGTH + " characters.");
+            }
             design.objectImage = resolve(props.getProperty("object", ""), images, assets);
             design.trailImage = resolve(props.getProperty("trail", ""), images, assets);
             design.backgroundImage = resolve(props.getProperty("background", ""), images, assets);

@@ -65,9 +65,9 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         data.enabled = true;
         ProgressSettings.getInstance().loadState(data);
         PlatformTestUtil.waitForFuture(installation.reload(), 10_000);
-        assertEquals(AnimalProgressBarUI.class.getName(), UIManager.get("ProgressBarUI"));
+        assertEquals(DesignProgressBarUI.class.getName(), UIManager.get("ProgressBarUI"));
         JProgressBar bar = new JProgressBar();
-        assertInstanceOf(bar.getUI(), AnimalProgressBarUI.class);
+        assertInstanceOf(bar.getUI(), DesignProgressBarUI.class);
         bar.setSize(320, 24);
         var image = new java.awt.image.BufferedImage(320, 24, java.awt.image.BufferedImage.TYPE_INT_ARGB);
         var graphics = image.createGraphics();
@@ -82,8 +82,8 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         PlatformTestUtil.waitForFuture(installation.reload(), 10_000);
         assertEquals(original, UIManager.get("ProgressBarUI"));
         bar.updateUI();
-        assertFalse(bar.getUI() instanceof AnimalProgressBarUI);
-        assertNull(UIManager.get(AnimalProgressBarUI.class.getName()));
+        assertFalse(bar.getUI() instanceof DesignProgressBarUI);
+        assertNull(UIManager.get(DesignProgressBarUI.class.getName()));
     }
 
     public void testReloadLoadsImagesInTheBackgroundAndPublishesOnlyTheLatestResult() {
@@ -136,7 +136,7 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
             listener.pluginLoaded(ours);
             awaitReload();
             assertNotNull(installation.painter());
-            assertEquals(AnimalProgressBarUI.class.getName(), UIManager.get("ProgressBarUI"));
+            assertEquals(DesignProgressBarUI.class.getName(), UIManager.get("ProgressBarUI"));
         }
     }
 
@@ -161,9 +161,32 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         } finally { configurable.disposeUIResources(); }
     }
 
-    @SuppressWarnings("unchecked")
-    private static javax.swing.JList<Design> designList(Container root) {
-        return (javax.swing.JList<Design>) find(root, c -> c instanceof javax.swing.JList<?>);
+    private static DesignTree designList(Container root) {
+        return (DesignTree) find(root, c -> c instanceof DesignTree);
+    }
+
+    public void testLibraryGroupsSeasonalDesignsUnderCategoriesThatCanBeOpened() {
+        DesignConfigurable configurable = new DesignConfigurable();
+        try {
+            DesignTree tree = designList(configurable.createComponent());
+            var root = (javax.swing.tree.TreeNode) tree.getModel().getRoot();
+            int plain = 0;
+            var categories = new java.util.ArrayList<String>();
+            for (int i = 0; i < root.getChildCount(); i++) {
+                var node = (javax.swing.tree.DefaultMutableTreeNode) root.getChildAt(i);
+                if (node.isLeaf()) plain++;
+                else categories.add(node.getUserObject().toString());
+            }
+            assertEquals(Design.presets().stream().filter(d -> d.category.isBlank()).count(), plain);
+            assertEquals(4, categories.size());
+            assertTrue(categories.get(0).startsWith("Autumn"));
+            // nothing seasonal is active, so every category starts closed and its designs are hidden
+            assertEquals(root.getChildCount(), tree.getRowCount());
+            Design winter = tree.designs().stream().filter(d -> Design.WINTER.equals(d.category)).findFirst().orElseThrow();
+            tree.select(winter);
+            assertSame(winter, tree.selectedDesign());
+            assertEquals(root.getChildCount() + 10, tree.getRowCount());
+        } finally { configurable.disposeUIResources(); }
     }
 
     public void testApplyActivatesTheSelectedDesign() throws ConfigurationException {
@@ -172,17 +195,17 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
             JComponent root = configurable.createComponent();
             var list = designList(root);
             String original = ProgressSettings.getInstance().getState().selectedId;
-            assertEquals(original, list.getSelectedValue().id);
+            assertEquals(original, list.selectedDesign().id);
             assertFalse(configurable.isModified());
-            list.setSelectedIndex(2);
-            Design other = list.getSelectedValue();
+            list.select(list.designs().get(2));
+            Design other = list.selectedDesign();
             assertTrue("selecting another design is a change", configurable.isModified());
             configurable.apply();
             assertEquals(other.id, ProgressSettings.getInstance().getState().selectedId);
             assertFalse(configurable.isModified());
             // selecting the original again and applying switches back
-            list.setSelectedValue(list.getModel().getElementAt(0), true);
-            assertEquals(original, list.getSelectedValue().id);
+            list.select(list.designs().get(0));
+            assertEquals(original, list.selectedDesign().id);
             assertTrue(configurable.isModified());
             configurable.apply();
             assertEquals(original, ProgressSettings.getInstance().getState().selectedId);
@@ -213,12 +236,12 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
         try {
             JComponent root = configurable.createComponent();
             var list = designList(root);
-            Design active = list.getSelectedValue();
+            Design active = list.selectedDesign();
             findButton(root, "Delete").doClick();
             configurable.apply();
             var state = ProgressSettings.getInstance().getState();
             assertNotSame(active.id, state.selectedId);
-            assertEquals(state.selectedId, list.getSelectedValue().id);
+            assertEquals(state.selectedId, list.selectedDesign().id);
             state.validate();
         } finally { configurable.disposeUIResources(); }
     }
@@ -234,7 +257,7 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
             assertEquals(1, plan.duplicates());
             configurable.mergeImported(plan);
             assertTrue(configurable.isModified());
-            assertEquals(added.name, designList(root).getSelectedValue().name);
+            assertEquals(added.name, designList(root).selectedDesign().name);
             configurable.apply();
             var state = ProgressSettings.getInstance().getState();
             assertEquals(Design.presets().size() + 1, state.designs.size());
@@ -249,7 +272,7 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
             state = ProgressSettings.getInstance().getState();
             assertEquals(2, state.designs.size());
             assertEquals("Second", state.selected().name);
-            assertEquals("Second", designList(root).getSelectedValue().name);
+            assertEquals("Second", designList(root).selectedDesign().name);
         } finally { configurable.disposeUIResources(); }
     }
 

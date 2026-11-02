@@ -9,7 +9,6 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.ui.ColoredListCellRenderer;
 import com.intellij.ui.ColorPanel;
 import com.intellij.ui.DocumentAdapter;
-import com.intellij.ui.components.JBList;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.accessibility.AccessibleAnnouncerUtil;
@@ -42,8 +41,7 @@ public final class DesignConfigurable implements Configurable {
     private ProgressSettings.Data draft;
     private JComponent root;
     private JPanel content;
-    private DefaultListModel<Design> model;
-    private JList<Design> designs;
+    private DesignTree designs;
     private JCheckBox enabled;
     private JTextField name;
     private JTextField object;
@@ -65,7 +63,7 @@ public final class DesignConfigurable implements Configurable {
     private String builtKey = "";
     private CompletableFuture<Void> previewDone = CompletableFuture.completedFuture(null);
     private javax.swing.Timer previewDebounce;
-    private Preview preview;
+    private DesignPreview preview;
     private boolean updating;
 
     @Override public String getDisplayName() { return "Any Progress Bar"; }
@@ -89,13 +87,11 @@ public final class DesignConfigurable implements Configurable {
         enabled.addActionListener(e -> draft.enabled = enabled.isSelected());
         content.add(enabled, BorderLayout.NORTH);
 
-        model = new DefaultListModel<>();
-        designs = new JBList<>(model);
-        designs.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        designs = new DesignTree();
         designs.getAccessibleContext().setAccessibleName("Designs");
-        designs.getAccessibleContext().setAccessibleDescription("Your design library. Select a design to edit it.");
-        designs.addListSelectionListener(e -> {
-            if (!updating && !e.getValueIsAdjusting() && selected() != null) {
+        designs.getAccessibleContext().setAccessibleDescription("Your design library, grouped by category. Select a design to edit it.");
+        designs.addTreeSelectionListener(e -> {
+            if (!updating && selected() != null) {
                 draft.selectedId = selected().id; // Apply makes the selected design the active one
                 showDesign();
             }
@@ -114,17 +110,17 @@ public final class DesignConfigurable implements Configurable {
             add(copy);
         }));
         actions.add(button("Delete", KeyEvent.VK_E, () -> {
-            if (model.size() == 1) {
+            if (draft.designs.size() == 1) {
                 Messages.showInfoMessage(root, "Keep at least one design.", getDisplayName());
                 return;
             }
-            int index = designs.getSelectedIndex();
-            if (index < 0) return;
+            Design doomed = selected();
+            if (doomed == null) return;
+            int index = draft.designs.indexOf(doomed);
             draft.designs.remove(index);
-            model.remove(index);
-            int next = Math.min(index, model.size() - 1);
-            draft.selectedId = draft.designs.get(next).id;
-            designs.setSelectedIndex(next);
+            Design next = draft.designs.get(Math.min(index, draft.designs.size() - 1));
+            draft.selectedId = next.id;
+            show(next);
         }));
         actions.add(button("Restore presets", KeyEvent.VK_R, () -> {
             if (Messages.showYesNoDialog(root, "Replace your design library with the built-in presets?",
@@ -133,10 +129,12 @@ public final class DesignConfigurable implements Configurable {
             draft.selectedId = draft.designs.getFirst().id;
             populate();
         }));
-        actions.add(button("Export...", KeyEvent.VK_X, this::exportSelected));
-        actions.add(button("Import...", KeyEvent.VK_I, this::importDesign));
-        actions.add(button("Export library...", this::exportLibrary));
-        actions.add(button("Import library...", this::importLibrary));
+        DesignTransfer transfer = new DesignTransfer(root, getDisplayName(), () -> draft, this::selected, this::add,
+            this::mergeImported, this::replaceLibrary);
+        actions.add(button("Export...", KeyEvent.VK_X, transfer::exportSelected));
+        actions.add(button("Import...", KeyEvent.VK_I, transfer::importDesign));
+        actions.add(button("Export library...", transfer::exportLibrary));
+        actions.add(button("Import library...", transfer::importLibrary));
         library.add(actions, BorderLayout.SOUTH);
         content.add(library, BorderLayout.WEST);
 
@@ -198,7 +196,7 @@ public final class DesignConfigurable implements Configurable {
         error.setForeground(JBUI.CurrentTheme.Label.errorForeground());
         error.getAccessibleContext().setAccessibleName("Validation message");
         row(editor, 11, "", error);
-        preview = new Preview();
+        preview = new DesignPreview();
         preview.getAccessibleContext().setAccessibleName("Live preview");
         preview.getAccessibleContext().setAccessibleDescription(
             "Animated preview of the selected design as indeterminate, determinate, compact and status bar progress bars.");
@@ -223,34 +221,6 @@ public final class DesignConfigurable implements Configurable {
         motion.addActionListener(e -> changed());
         reset();
         return root;
-    }
-
-    /** File work that can fail with an {@link IOException}. */
-    private interface IoTask<T> {
-        T run() throws IOException;
-    }
-
-    /**
-     * Runs file work on a background thread under a cancellable modal progress, so the settings window keeps painting and
-     * a large image or slow disk cannot freeze the IDE. Throws {@link ProcessCanceledException} if the user cancels.
-     */
-    private <T> T inBackground(String title, IoTask<T> task) throws IOException {
-        var result = new AtomicReference<T>();
-        var failure = new AtomicReference<Exception>();
-        boolean completed = ProgressManager.getInstance().runProcessWithProgressSynchronously(() -> {
-            try {
-                result.set(task.run());
-            } catch (ProcessCanceledException e) {
-                throw e;
-            } catch (IOException | RuntimeException e) {
-                failure.set(e);
-            }
-        }, title, true, null, root);
-        if (!completed) throw new ProcessCanceledException();
-        Exception e = failure.get();
-        if (e instanceof IOException io) throw io;
-        if (e instanceof RuntimeException runtime) throw runtime;
-        return result.get();
     }
 
     private static JButton button(String label, Runnable action) {
@@ -312,7 +282,7 @@ public final class DesignConfigurable implements Configurable {
             if (chooser.showOpenDialog(root) != JFileChooser.APPROVE_OPTION) return;
             Path file = chooser.getSelectedFile().toPath();
             try {
-                String reference = inBackground("Importing image", () -> Artwork.importFile(file, Artwork.assetsDirectory()));
+                String reference = DesignTransfer.inBackground(root, "Importing image", () -> Artwork.importFile(file, Artwork.assetsDirectory()));
                 assign.accept(reference);
                 field.setText(reference);
                 field.setToolTipText(reference);
@@ -355,12 +325,14 @@ public final class DesignConfigurable implements Configurable {
         panel.add(component, c);
     }
 
-    private Design selected() { return designs.getSelectedValue(); }
+    private Design selected() { return designs.selectedDesign(); }
+
+    /** Rebuilds the library tree from the draft and selects {@code design}. */
+    private void show(Design design) { designs.show(draft.designs, design); }
 
     private void add(Design design) {
         draft.designs.add(design);
-        model.addElement(design);
-        designs.setSelectedValue(design, true);
+        show(design);
     }
 
     private void changed() {
@@ -373,7 +345,7 @@ public final class DesignConfigurable implements Configurable {
         d.speed = (Integer) speed.getValue();
         d.trailLength = (Integer) trailLength.getValue();
         d.motion = (Design.Motion) motion.getSelectedItem();
-        designs.repaint();
+        designs.treeDidChange();
         schedulePreview();
     }
 
@@ -384,94 +356,10 @@ public final class DesignConfigurable implements Configurable {
         if (!java.util.Objects.equals(parsed, swatch.getSelectedColor())) swatch.setSelectedColor(parsed);
     }
 
-    private void exportSelected() {
-        Design design = selected();
-        if (design == null) return;
-        JFileChooser chooser = new JFileChooser();
-        chooser.setSelectedFile(new java.io.File(design.name.replaceAll("[^A-Za-z0-9._-]+", "_") + "." + DesignPack.EXTENSION));
-        chooser.setFileFilter(new FileNameExtensionFilter("Any Progress Bar design", DesignPack.EXTENSION));
-        if (chooser.showSaveDialog(root) != JFileChooser.APPROVE_OPTION) return;
-        Path target = chooser.getSelectedFile().toPath();
-        if (!target.getFileName().toString().toLowerCase(java.util.Locale.ROOT).endsWith("." + DesignPack.EXTENSION)) {
-            target = target.resolveSibling(target.getFileName() + "." + DesignPack.EXTENSION);
-        }
-        if (java.nio.file.Files.exists(target) && Messages.showYesNoDialog(root, target.getFileName() + " already exists. Replace it?",
-                getDisplayName(), Messages.getQuestionIcon()) != Messages.YES) return;
-        Design snapshot = design.copy();
-        Path destination = target;
-        try {
-            inBackground("Exporting design", () -> { DesignPack.export(snapshot, destination); return null; });
-            Messages.showInfoMessage(root, "Exported to " + target, getDisplayName());
-        } catch (ProcessCanceledException cancelled) {
-            // the user cancelled the export; the previous file, if any, is untouched
-        } catch (IOException | IllegalArgumentException e) {
-            Messages.showErrorDialog(root, e.getMessage(), "Could Not Export Design");
-        }
-    }
-
-    private void exportLibrary() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setSelectedFile(new java.io.File("any-progress-bar-library." + LibraryPack.EXTENSION));
-        chooser.setFileFilter(new FileNameExtensionFilter("Any Progress Bar library", LibraryPack.EXTENSION));
-        if (chooser.showSaveDialog(root) != JFileChooser.APPROVE_OPTION) return;
-        Path target = chooser.getSelectedFile().toPath();
-        if (!target.getFileName().toString().toLowerCase(java.util.Locale.ROOT).endsWith("." + LibraryPack.EXTENSION)) {
-            target = target.resolveSibling(target.getFileName() + "." + LibraryPack.EXTENSION);
-        }
-        if (java.nio.file.Files.exists(target) && Messages.showYesNoDialog(root, target.getFileName() + " already exists. Replace it?",
-                getDisplayName(), Messages.getQuestionIcon()) != Messages.YES) return;
-        var snapshot = draft.designs.stream().map(Design::copy).toList();
-        String activeId = draft.selectedId;
-        Path destination = target;
-        try {
-            inBackground("Exporting library", () -> { LibraryPack.export(snapshot, activeId, destination); return null; });
-            Messages.showInfoMessage(root, "Exported " + snapshot.size() + " designs to " + target, getDisplayName());
-        } catch (ProcessCanceledException cancelled) {
-            // the user cancelled the export; the previous file, if any, is untouched
-        } catch (IOException | IllegalArgumentException e) {
-            Messages.showErrorDialog(root, e.getMessage(), "Could Not Export Library");
-        }
-    }
-
-    private void importLibrary() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setFileFilter(new FileNameExtensionFilter("Any Progress Bar library", LibraryPack.EXTENSION));
-        if (chooser.showOpenDialog(root) != JFileChooser.APPROVE_OPTION) return;
-        LibraryPack.Imported imported;
-        Path file = chooser.getSelectedFile().toPath();
-        try {
-            imported = inBackground("Importing library", () -> LibraryPack.importFrom(file, Artwork.assetsDirectory()));
-        } catch (ProcessCanceledException cancelled) {
-            return; // the user cancelled the import
-        } catch (IOException | IllegalArgumentException e) {
-            Messages.showErrorDialog(root, e.getMessage(), "Could Not Import Library");
-            return;
-        }
-        var plan = LibraryPack.planMerge(draft.designs, imported.designs());
-        String summary = imported.designs().size() + " designs in the file";
-        if (plan.duplicates() > 0) summary += ", " + plan.duplicates() + " of them already in your library";
-        if (plan.additions().isEmpty()) {
-            int answer = Messages.showDialog(root, summary + ". Nothing new would be merged.\n\nReplace your library with the "
-                    + imported.designs().size() + " imported designs instead?", "Import Library",
-                new String[]{"Replace Library", "Cancel"}, 1, Messages.getQuestionIcon());
-            if (answer == 0) replaceLibrary(imported);
-            return;
-        }
-        int answer = Messages.showDialog(root, summary + ".\n\nMerge adds the " + plan.additions().size()
-                + " new designs and keeps everything you have. Replace Library discards your current " + draft.designs.size()
-                + " designs in favour of the imported ones.", "Import Library",
-            new String[]{"Merge", "Replace Library", "Cancel"}, 0, Messages.getQuestionIcon());
-        if (answer == 0) mergeImported(plan);
-        else if (answer == 1) replaceLibrary(imported);
-    }
-
     /** Adds the designs a merge found to be new and selects the first of them. */
     void mergeImported(LibraryPack.MergePlan plan) {
-        for (Design design : plan.additions()) {
-            draft.designs.add(design);
-            model.addElement(design);
-        }
-        if (!plan.additions().isEmpty()) designs.setSelectedValue(plan.additions().getFirst(), true);
+        draft.designs.addAll(plan.additions());
+        if (!plan.additions().isEmpty()) show(plan.additions().getFirst());
     }
 
     /** Replaces the whole library; the design that was active in the file becomes active, else the first one. */
@@ -480,20 +368,6 @@ public final class DesignConfigurable implements Configurable {
         Design active = imported.active();
         draft.selectedId = (active != null ? active : draft.designs.getFirst()).id;
         populate();
-    }
-
-    private void importDesign() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setFileFilter(new FileNameExtensionFilter("Any Progress Bar design", DesignPack.EXTENSION));
-        if (chooser.showOpenDialog(root) != JFileChooser.APPROVE_OPTION) return;
-        Path file = chooser.getSelectedFile().toPath();
-        try {
-            add(inBackground("Importing design", () -> DesignPack.importFrom(file, Artwork.assetsDirectory())));
-        } catch (ProcessCanceledException cancelled) {
-            // the user cancelled the import
-        } catch (IOException | IllegalArgumentException e) {
-            Messages.showErrorDialog(root, e.getMessage(), "Could Not Import Design");
-        }
     }
 
     private static Map<Design.Field, String> valueProblems(Design design) {
@@ -642,9 +516,7 @@ public final class DesignConfigurable implements Configurable {
     private void populate() {
         updating = true;
         try {
-            model.clear();
-            for (Design d : draft.designs) model.addElement(d);
-            designs.setSelectedValue(draft.selected(), true);
+            designs.show(draft.designs, draft.selected());
         } finally { updating = false; }
         showDesign();
     }
@@ -665,14 +537,14 @@ public final class DesignConfigurable implements Configurable {
             for (Design design : draft.designs) {
                 var problems = design.problems();
                 if (problems.isEmpty()) continue;
-                designs.setSelectedValue(design, true); // show the offending design so its fields are highlighted
+                show(design); // show the offending design so its fields are highlighted
                 String label = design.name == null || design.name.isBlank() ? "A design" : "\"" + design.name + "\"";
                 throw new ConfigurationException(label + ": " + problems.getFirst().message());
             }
             draft.validate();
             if (draft.enabled) {
                 Design active = draft.selected().copy();
-                inBackground("Checking progress bar images", () -> new ProgressPainter(active));
+                DesignTransfer.inBackground(root, "Checking progress bar images", () -> new ProgressPainter(active));
             }
             ProgressSettings.getInstance().loadState(draft);
             ProgressInstallation.getInstance().reload();
@@ -703,50 +575,7 @@ public final class DesignConfigurable implements Configurable {
         root = null;
         content = null;
         draft = null;
-        model = null;
         designs = null;
         preview = null;
-    }
-
-    private static final class Preview extends JPanel {
-        private final long started = System.nanoTime();
-        private final Timer timer = new Timer(33, e -> repaint());
-        private ProgressPainter painter;
-        private boolean stale;
-        private double progress = 0.65;
-
-        Preview() { setPreferredSize(JBUI.size(400, 190)); setMinimumSize(JBUI.size(240, 190)); }
-        @Override public void addNotify() { super.addNotify(); timer.start(); }
-        @Override public void removeNotify() { timer.stop(); super.removeNotify(); }
-        @Override protected void paintComponent(Graphics graphics) {
-            super.paintComponent(graphics);
-            if (painter == null) return;
-            double seconds = (System.nanoTime() - started) / 1_000_000_000.0;
-            Graphics2D g = (Graphics2D) graphics.create();
-            try {
-                g.setFont(JBUI.Fonts.label());
-                g.setColor(getForeground());
-                g.drawString("Indeterminate", 0, JBUI.scale(12));
-                g.translate(0, JBUI.scale(18));
-                painter.paint(g, getWidth(), JBUI.scale(30), 0, true, seconds, getBackground(), true);
-                g.translate(0, JBUI.scale(42));
-                g.setColor(getForeground());
-                g.drawString("Determinate", 0, 0);
-                g.translate(0, JBUI.scale(6));
-                painter.paint(g, getWidth(), JBUI.scale(30), progress, false, seconds, getBackground(), true);
-                g.translate(0, JBUI.scale(42));
-                g.setColor(getForeground());
-                g.drawString("Compact (16 px) and status bar (8 px)", 0, 0);
-                g.translate(0, JBUI.scale(6));
-                painter.paint(g, getWidth(), JBUI.scale(16), progress, true, seconds, getBackground(), true);
-                g.translate(0, JBUI.scale(22));
-                painter.paint(g, getWidth(), JBUI.scale(8), progress, false, seconds, getBackground(), true);
-                if (stale) {
-                    g.translate(0, JBUI.scale(22));
-                    g.setColor(JBUI.CurrentTheme.Label.errorForeground());
-                    g.drawString("Showing the last valid version of this design", 0, 0);
-                }
-            } finally { g.dispose(); }
-        }
     }
 }

@@ -28,6 +28,15 @@ public final class Design {
     public int speed = 100;
     public int trailLength = 160;
     public Motion motion = Motion.GLIDE;
+    /** Group the design is listed under in the editor; empty for designs that are always shown. */
+    public String category = "";
+
+    public static final String AUTUMN = "Autumn";
+    public static final String WINTER = "Winter & Christmas";
+    public static final String SPRING = "Spring";
+    public static final String SUMMER = "Summer";
+    /** The categories in the order the editor lists them. */
+    public static final List<String> CATEGORIES = List.of(AUTUMN, WINTER, SPRING, SUMMER);
 
     public Design copy() {
         Design d = new Design();
@@ -41,6 +50,7 @@ public final class Design {
         d.speed = speed;
         d.trailLength = trailLength;
         d.motion = motion;
+        d.category = category;
         return d;
     }
 
@@ -87,7 +97,7 @@ public final class Design {
      * they are compared by file name rather than by the folder they happen to live in.
      */
     public boolean sameContent(Design other) {
-        return Objects.equals(id, other.id) && sameLook(other);
+        return Objects.equals(id, other.id) && Objects.equals(category, other.category) && sameLook(other);
     }
 
     /** Like {@link #sameContent} but ignoring the ID: whether two designs are duplicates of each other. */
@@ -115,12 +125,12 @@ public final class Design {
     }
 
     public static List<Design> presets() {
-        var all = new java.util.ArrayList<>(animalPresets());
+        var all = new java.util.ArrayList<>(originalPresets());
         all.addAll(themePresets());
         return all;
     }
 
-    public static List<Design> animalPresets() {
+    public static List<Design> originalPresets() {
         return List.of(
             preset("cat", "Cat & rainbow", "rainbow", "#242437", Motion.BOUNCE),
             preset("dog", "Dog & confetti", "confetti", "#24302B", Motion.WIGGLE),
@@ -132,8 +142,12 @@ public final class Design {
 
     /** Preset version in which a themed preset first shipped; see {@link ProgressSettings.Data#PRESET_VERSION}. */
     static int introducedIn(Design preset) {
+        if (!preset.category.isBlank()) return 6;
         return switch (preset.id) {
             case "preset-snail-mail", "preset-cowsmic", "preset-ramen-racer", "preset-frog-wizard", "preset-disco-duck" -> 4;
+            case "preset-sloth-skater", "preset-pizza-scooter", "preset-octopus-barista", "preset-ghost-commuter",
+                 "preset-dino-bike", "preset-toaster-jetpack", "preset-narwhal-sub", "preset-snowman-surfer",
+                 "preset-sushi-train", "preset-gingerbread-dash" -> 5;
             default -> preset.id.startsWith("preset-tung-") ? 2 : 3;
         };
     }
@@ -163,7 +177,57 @@ public final class Design {
             themed("cowsmic", "Cowsmic encounter", "cowsmic.svg", "milky-way.svg", "", "#2C2947", 60, 90, 540, Motion.BOB),
             themed("ramen-racer", "Ramen racer", "ramen-racer.svg", "noodle-trail.svg", "", "#442E2C", 60, 90, 540, Motion.WIGGLE),
             themed("frog-wizard", "The frog of compile", "frog-wizard.svg", "pond-magic.svg", "", "#263D35", 60, 90, 540, Motion.BOB),
-            themed("disco-duck", "Disco duck", "disco-duck.svg", "disco-trail.svg", "", "#3B2D48", 60, 90, 540, Motion.BOUNCE)
+            themed("disco-duck", "Disco duck", "disco-duck.svg", "disco-trail.svg", "", "#3B2D48", 60, 90, 540, Motion.BOUNCE),
+            themed("sloth-skater", "Sloth skater", "sloth-skater.svg", "leaf-drift.svg", "", "#26352B", 60, 90, 540, Motion.GLIDE),
+            themed("pizza-scooter", "Pizza scooter", "pizza-scooter.svg", "cheese-pull.svg", "", "#3F2D27", 60, 90, 540, Motion.BOUNCE),
+            themed("octopus-barista", "Octopus barista", "octopus-barista.svg", "coffee-beans.svg", "", "#352B2D", 60, 90, 540, Motion.WIGGLE),
+            themed("ghost-commuter", "Ghost commuter", "ghost-commuter.svg", "wisps.svg", "", "#2B2845", 60, 90, 540, Motion.BOB),
+            themed("dino-bike", "Dino on a bike", "dino-bike.svg", "footprints.svg", "", "#233A3A", 60, 90, 540, Motion.HOP),
+            themed("toaster-jetpack", "Toaster jetpack", "toaster-jetpack.svg", "toast-trail.svg", "", "#2E2B3A", 60, 90, 540, Motion.BOB),
+            themed("narwhal-sub", "Narwhal submarine", "narwhal-sub.svg", "sea-bubbles.svg", "", "#1F3248", 60, 90, 540, Motion.BOB),
+            themed("snowman-surfer", "Snowman surfer", "snowman-surfer.svg", "snow-spray.svg", "", "#26344A", 60, 90, 540, Motion.GLIDE),
+            themed("sushi-train", "Sushi train", "sushi-train.svg", "soy-drops.svg", "", "#2A3A3C", 60, 90, 540, Motion.GLIDE),
+            themed("gingerbread-dash", "Gingerbread dash", "gingerbread-dash.svg", "sprinkles.svg", "", "#3A2A38", 60, 90, 540, Motion.BOUNCE),
+            seasonal(Design.AUTUMN, "hedgehog-apples", "Hedgehog & apples", "hedgehog-apples.svg", "maple-leaves.svg", "#3A2A22", Motion.WIGGLE),
+            seasonal(Design.AUTUMN, "pumpkin-cart", "Pumpkin cart", "pumpkin-cart.svg", "pumpkin-vine.svg", "#3B2A22", Motion.BOUNCE),
+            seasonal(Design.AUTUMN, "scarecrow-crow", "Scarecrow & crow", "scarecrow-crow.svg", "straw-wisps.svg", "#3A3122", Motion.HOP),
+            seasonal(Design.AUTUMN, "acorn-squirrel", "Acorn squirrel", "acorn-squirrel.svg", "acorn-trail.svg", "#38291F", Motion.BOUNCE),
+            seasonal(Design.AUTUMN, "mushroom-gnome", "Mushroom gnome", "mushroom-gnome.svg", "spore-puffs.svg", "#2F2A2A", Motion.BOB),
+            seasonal(Design.AUTUMN, "cauldron-cat", "Cauldron cat", "cauldron-cat.svg", "potion-fizz.svg", "#2A2438", Motion.BOB),
+            seasonal(Design.AUTUMN, "apple-pie", "Apple pie", "apple-pie.svg", "cinnamon-steam.svg", "#3D2B24", Motion.BOUNCE),
+            seasonal(Design.AUTUMN, "wise-owl", "Wise owl", "wise-owl.svg", "feather-drift.svg", "#2D2A3A", Motion.GLIDE),
+            seasonal(Design.AUTUMN, "tractor-hay", "Harvest tractor", "tractor-hay.svg", "wheat-dust.svg", "#3A3320", Motion.WIGGLE),
+            seasonal(Design.AUTUMN, "turkey-sneakers", "Turkey in sneakers", "turkey-sneakers.svg", "corn-feathers.svg", "#3B2A26", Motion.HOP),
+            seasonal(Design.WINTER, "santa-sleigh", "Santa's sleigh", "santa-sleigh.svg", "sleigh-stars.svg", "#2A3348", Motion.GLIDE),
+            seasonal(Design.WINTER, "rudolph", "Rudolph", "rudolph.svg", "red-glow.svg", "#2B3550", Motion.BOUNCE),
+            seasonal(Design.WINTER, "elf-sled", "Elf on a sled", "elf-sled.svg", "candy-canes.svg", "#2E3C4E", Motion.GLIDE),
+            seasonal(Design.WINTER, "walking-tree", "Walking Christmas tree", "walking-tree.svg", "ornaments.svg", "#22343A", Motion.WIGGLE),
+            seasonal(Design.WINTER, "penguin-skater", "Penguin skater", "penguin-skater.svg", "ice-crystals.svg", "#233A52", Motion.GLIDE),
+            seasonal(Design.WINTER, "polar-bear-cocoa", "Polar bear cocoa", "polar-bear-cocoa.svg", "marshmallows.svg", "#33384F", Motion.BOB),
+            seasonal(Design.WINTER, "snow-globe", "Snow globe", "snow-globe.svg", "glitter-snow.svg", "#2D3250", Motion.PULSE),
+            seasonal(Design.WINTER, "gift-box", "Gift box", "gift-box.svg", "ribbons-confetti.svg", "#2A2F45", Motion.BOUNCE),
+            seasonal(Design.WINTER, "yeti-hug", "Friendly yeti", "yeti-hug.svg", "snowballs.svg", "#263650", Motion.WIGGLE),
+            seasonal(Design.WINTER, "cardinal-wreath", "Cardinal & wreath", "cardinal-wreath.svg", "holly-berries.svg", "#2B3A3A", Motion.HOP),
+            seasonal(Design.SPRING, "easter-bunny", "Easter bunny", "easter-bunny.svg", "painted-eggs.svg", "#2F3F34", Motion.BOUNCE),
+            seasonal(Design.SPRING, "ladybug-leaf", "Ladybug", "ladybug-leaf.svg", "petals-drift.svg", "#2D3A32", Motion.WIGGLE),
+            seasonal(Design.SPRING, "rain-boot-duckling", "Duckling in rain boots", "rain-boot-duckling.svg", "puddle-splash.svg", "#2A3C4A", Motion.HOP),
+            seasonal(Design.SPRING, "bumblebee", "Bumblebee", "bumblebee.svg", "pollen-flowers.svg", "#2C3A30", Motion.BOB),
+            seasonal(Design.SPRING, "cloud-lamb", "Cloud lamb", "cloud-lamb.svg", "clover-meadow.svg", "#2D3B4E", Motion.BOUNCE),
+            seasonal(Design.SPRING, "watering-can", "Watering can", "watering-can.svg", "sprouts.svg", "#34302D", Motion.WIGGLE),
+            seasonal(Design.SPRING, "butterfly", "Butterfly", "butterfly.svg", "flutter-path.svg", "#2E2D48", Motion.PULSE),
+            seasonal(Design.SPRING, "gnome-wheelbarrow", "Garden gnome", "gnome-wheelbarrow.svg", "tulips.svg", "#2D3D34", Motion.WIGGLE),
+            seasonal(Design.SPRING, "robin-blossom", "Robin & blossoms", "robin-blossom.svg", "blossom-twigs.svg", "#2F3A3E", Motion.GLIDE),
+            seasonal(Design.SPRING, "sunny-cloud", "Sunny cloud", "sunny-cloud.svg", "rain-rainbow.svg", "#2B3A55", Motion.BOB),
+            seasonal(Design.SUMMER, "ice-cream-cone", "Ice cream cone", "ice-cream-cone.svg", "melt-drops.svg", "#2E3B52", Motion.BOUNCE),
+            seasonal(Design.SUMMER, "beach-crab", "Beach crab", "beach-crab.svg", "shell-prints.svg", "#33403F", Motion.HOP),
+            seasonal(Design.SUMMER, "flamingo-float", "Flamingo float", "flamingo-float.svg", "ripple-waves.svg", "#1F3A4C", Motion.BOB),
+            seasonal(Design.SUMMER, "watermelon-shades", "Cool watermelon", "watermelon-shades.svg", "melon-seeds.svg", "#2B3F36", Motion.BOUNCE),
+            seasonal(Design.SUMMER, "beach-ball", "Beach ball", "beach-ball.svg", "sand-stars.svg", "#3A3A44", Motion.SPIN),
+            seasonal(Design.SUMMER, "sunshine-shades", "Sunshine", "sunshine-shades.svg", "sun-rays.svg", "#2B4056", Motion.SPIN),
+            seasonal(Design.SUMMER, "campfire-smore", "Campfire s'more", "campfire-smore.svg", "sparks-smores.svg", "#272A3C", Motion.PULSE),
+            seasonal(Design.SUMMER, "lemonade-pitcher", "Lemonade", "lemonade-pitcher.svg", "lemon-slices.svg", "#2E4A48", Motion.BOB),
+            seasonal(Design.SUMMER, "sea-turtle", "Sea turtle", "sea-turtle.svg", "tide-foam.svg", "#1E3F4F", Motion.GLIDE),
+            seasonal(Design.SUMMER, "sailboat", "Sailboat", "sailboat.svg", "gulls-waves.svg", "#24405C", Motion.GLIDE)
         ));
         all.addAll(optionalPresets());
         return all;
@@ -213,11 +277,18 @@ public final class Design {
         return d;
     }
 
-    private static Design preset(String animal, String name, String trail, String color, Motion motion) {
+    /** A themed preset listed under a seasonal category. */
+    private static Design seasonal(String category, String id, String name, String object, String trail, String color, Motion motion) {
+        Design d = themed(id, name, object, trail, "", color, 60, 90, 540, motion);
+        d.category = category;
+        return d;
+    }
+
+    private static Design preset(String slug, String name, String trail, String color, Motion motion) {
         Design d = new Design();
-        d.id = "preset-" + animal;
+        d.id = "preset-" + slug;
         d.name = name;
-        d.objectImage = "bundled:" + animal + ".svg";
+        d.objectImage = "bundled:" + slug + ".svg";
         d.trailImage = "bundled:" + trail + ".svg";
         d.backgroundColor = color;
         d.motion = motion;

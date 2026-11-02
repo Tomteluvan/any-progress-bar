@@ -16,13 +16,13 @@ import javax.swing.event.ChangeListener;
 import javax.swing.plaf.ComponentUI;
 import javax.swing.plaf.basic.BasicProgressBarUI;
 
-public final class AnimalProgressBarUI extends BasicProgressBarUI implements AnimationClock.Client {
+public final class DesignProgressBarUI extends BasicProgressBarUI implements AnimationClock.Client {
     private HierarchyListener visibilityListener;
     private ChangeListener valueListener;
     private PropertyChangeListener propertyListener;
     private boolean registered;
 
-    public static ComponentUI createUI(JComponent component) { return new AnimalProgressBarUI(); }
+    public static ComponentUI createUI(JComponent component) { return new DesignProgressBarUI(); }
 
     @Override public void installUI(JComponent component) {
         super.installUI(component);

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="124" height="52" viewBox="0 0 124 52">
+  <path d="M0 36Q32 28 62 36T126 36" fill="none" stroke="#F6D366" stroke-width="3" stroke-linecap="round" opacity=".5"/>
+  <path d="M0 40Q32 33 62 40T126 40" fill="none" stroke="#F6D366" stroke-width="1.6" stroke-linecap="round" opacity=".35"/>
+  <circle cx="16" cy="14" r="6" fill="#D8625E"/><circle cx="14" cy="12" r="1.8" fill="#EE9A92"/>
+  <g transform="translate(40 24) rotate(25 7 4)"><ellipse cx="7" cy="4" rx="7" ry="4" fill="#8CCB7B"/><path d="M0 4H14" stroke="#5E9A55" stroke-width="1"/></g>
+  <circle cx="74" cy="12" r="5" fill="#D8625E"/><circle cx="72.5" cy="10.5" r="1.5" fill="#EE9A92"/>
+  <path d="M96 22Q100 33 96 40" fill="none" stroke="#F6D366" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="96" cy="42" r="2.6" fill="#F6D366"/>
+  <g transform="translate(104 8) rotate(-15 6 4)"><ellipse cx="6" cy="4" rx="6" ry="3.6" fill="#A9DC8F"/><path d="M0 4H12" stroke="#6BA95F" stroke-width="1"/></g>
+  <circle cx="56" cy="46" r="1.6" fill="#F3EBB4"/><circle cx="116" cy="40" r="1.4" fill="#F3EBB4"/>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="124" height="52" viewBox="0 0 124 52">
+  <path d="M0 38Q32 32 62 38T126 38" fill="none" stroke="#7DBEE0" stroke-width="2" stroke-linecap="round" opacity="0.35" />
+  <path transform="translate(12 14) scale(1.2)" d="M0 -8Q-5 0 0 3 5 0 0 -8Z" fill="#8FC9E6"/>
+  <path transform="translate(22 28) scale(1)" d="M0 -8Q-5 0 0 3 5 0 0 -8Z" fill="#8FC9E6"/>
+  <path transform="translate(38 12) scale(1.2)" d="M0 -8Q-5 0 0 3 5 0 0 -8Z" fill="#8FC9E6"/>
+  <path d="M52 40Q70 10 88 40" fill="none" stroke="#F06A6A" stroke-width="2.4" stroke-linecap="round" />
+  <path d="M55 40Q70 15 85 40" fill="none" stroke="#F6CF4A" stroke-width="2.4" stroke-linecap="round" />
+  <path d="M58 40Q70 20 82 40" fill="none" stroke="#7BC96F" stroke-width="2.4" stroke-linecap="round" />
+  <path d="M61 40Q70 25 79 40" fill="none" stroke="#6FB6D9" stroke-width="2.4" stroke-linecap="round" />
+  <path transform="translate(100 14) scale(1.2)" d="M0 -8Q-5 0 0 3 5 0 0 -8Z" fill="#8FC9E6"/>
+  <path transform="translate(110 28) scale(1)" d="M0 -8Q-5 0 0 3 5 0 0 -8Z" fill="#8FC9E6"/>
+  <path transform="translate(118 10) scale(0.7)" d="M0 -6L1.6 -1.6 6 0 1.6 1.6 0 6 -1.6 1.6 -6 0 -1.6 -1.6Z" fill="#F4DD91"/>
+</svg>

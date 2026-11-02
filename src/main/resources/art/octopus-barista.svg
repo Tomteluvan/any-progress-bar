@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="86" height="72" viewBox="0 0 86 72">
+  <path d="M27 44Q14 40 11 28" fill="none" stroke="#D0768F" stroke-width="5.5" stroke-linecap="round"/>
+  <path d="M59 44Q72 40 75 28" fill="none" stroke="#D0768F" stroke-width="5.5" stroke-linecap="round"/>
+  <path d="M28 48Q15 54 19 63Q22 68 28 65" fill="none" stroke="#D0768F" stroke-width="6" stroke-linecap="round"/>
+  <path d="M58 48Q71 54 67 63Q64 68 58 65" fill="none" stroke="#D0768F" stroke-width="6" stroke-linecap="round"/>
+  <path d="M36 50Q33 61 39 67M50 50Q53 61 47 67" fill="none" stroke="#D0768F" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="43" cy="30" rx="22" ry="20" fill="#E48FA8"/>
+  <path d="M27 18Q33 8 45 8" fill="none" stroke="#F5BCCB" stroke-width="3" stroke-linecap="round"/>
+  <path d="M29 14Q43 -1 57 14Z" fill="#3D3A52"/>
+  <circle cx="43" cy="3" r="2.6" fill="#3D3A52"/>
+  <circle cx="35" cy="31" r="5.6" fill="#FFF4E0"/><circle cx="51" cy="31" r="5.6" fill="#FFF4E0"/>
+  <circle cx="36" cy="32" r="2.6" fill="#33283A"/><circle cx="52" cy="32" r="2.6" fill="#33283A"/>
+  <circle cx="37" cy="31" r=".9" fill="#FFF4E0"/><circle cx="53" cy="31" r=".9" fill="#FFF4E0"/>
+  <ellipse cx="28" cy="39" rx="3.4" ry="2" fill="#F2A3B2"/><ellipse cx="58" cy="39" rx="3.4" ry="2" fill="#F2A3B2"/>
+  <path d="M39 40Q43 44 47 40" fill="none" stroke="#9E4F68" stroke-width="1.7" stroke-linecap="round"/>
+  <rect x="4" y="15" width="14" height="11" rx="2.5" fill="#FFF4E0"/>
+  <path d="M18 18Q23 18 23 21T18 24" fill="none" stroke="#FFF4E0" stroke-width="1.6"/>
+  <rect x="4" y="15" width="14" height="3" rx="1.5" fill="#B9815B"/>
+  <path d="M9 11Q7 8 9 5M13 11Q11 8 13 5" fill="none" stroke="#DADDF2" stroke-width="1.3" stroke-linecap="round"/>
+  <rect x="68" y="15" width="14" height="11" rx="2.5" fill="#FFF4E0"/>
+  <path d="M82 18Q86 18 86 21T82 24" fill="none" stroke="#FFF4E0" stroke-width="1.6"/>
+  <rect x="68" y="15" width="14" height="3" rx="1.5" fill="#B9815B"/>
+  <path d="M73 11Q71 8 73 5M77 11Q75 8 77 5" fill="none" stroke="#DADDF2" stroke-width="1.3" stroke-linecap="round"/>
+</svg>
