@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.0
+- Ten new presets in the playful character style: Sloth skater, Pizza scooter, Octopus barista, Ghost commuter, Dino on a bike, Toaster jetpack, Narwhal submarine, Snowman surfer, Sushi train and Gingerbread dash. Existing libraries receive them once without changing custom designs, the active selection or presets you deleted.
+- Forty seasonal presets: ten each for autumn, winter and Christmas, spring and summer. The design list now groups them under categories you can open and close; presets without a category stay at the top and are always shown. Existing libraries receive them once. Categories are kept when exporting and importing designs and libraries.
+- Internal: renamed the progress bar UI class and split the settings page into smaller classes.
+
 ## 1.7.1
 - Internal: releases are now signed with a plugin signing certificate.
 
