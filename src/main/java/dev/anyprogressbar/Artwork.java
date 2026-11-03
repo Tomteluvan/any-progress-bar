@@ -32,8 +32,11 @@ public final class Artwork {
 
     private final BufferedImage raster;
     private final SVGDocument vector;
-    /** Last pre-scaled copy of {@link #raster}; avoids rescaling the source on every animation frame. */
-    private BufferedImage scaled;
+    /** Pre-scaled copies of {@link #raster} by pixel size, least recently used first; see {@link #scaledRaster}. */
+    private final java.util.LinkedHashMap<Long, BufferedImage> scaledCache = new java.util.LinkedHashMap<>(16, 0.75f, true);
+    private long scaledBytes;
+    static final int MAX_CACHED_SIZES = 8;
+    static final long MAX_CACHE_BYTES = 8L * 1024 * 1024;
 
     private Artwork(BufferedImage raster, SVGDocument vector) {
         this.raster = raster;
@@ -161,11 +164,24 @@ public final class Artwork {
         return importBytes(bytes, extension, directory);
     }
 
-    /** Validates {@code bytes} and stores exactly those bytes under their content hash; returns the stored path. */
-    static String importBytes(byte[] bytes, String extension, Path directory) throws IOException {
+    /** Checks that {@code bytes} are an acceptable image of the given type, without storing anything. */
+    static void validate(byte[] bytes, String extension) throws IOException {
         checkExtension(extension);
         if (bytes.length > MAX_IMAGE_BYTES) throw new IOException("Images must be at most 10 MB.");
         decode(bytes, extension.equals("svg"), "the selected file");
+    }
+
+    /** Validates {@code bytes} and stores exactly those bytes under their content hash; returns the stored path. */
+    static String importBytes(byte[] bytes, String extension, Path directory) throws IOException {
+        return importBytes(bytes, extension, directory, null);
+    }
+
+    /**
+     * Like {@link #importBytes(byte[], String, Path)}; every file this call newly creates is added to {@code created}
+     * (when given), so a caller that fails later can remove exactly those and nothing that was stored before.
+     */
+    static String importBytes(byte[] bytes, String extension, Path directory, java.util.List<Path> created) throws IOException {
+        validate(bytes, extension);
         String hash;
         try {
             hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
@@ -174,12 +190,22 @@ public final class Artwork {
         }
         Files.createDirectories(directory);
         Path target = directory.resolve(hash + "." + extension);
-        if (Files.exists(target)) {
+        boolean exists = Files.exists(target);
+        if (!exists) {
+            try {
+                Files.write(target, bytes, java.nio.file.StandardOpenOption.CREATE_NEW);
+                if (created != null) created.add(target);
+            } catch (java.nio.file.FileAlreadyExistsException e) {
+                exists = true; // stored by someone else in the meantime: not ours to remove
+            } catch (IOException e) {
+                Files.deleteIfExists(target); // CREATE_NEW succeeded or failed before; either way this half-written file is ours
+                throw e;
+            }
+        }
+        if (exists) {
             // Re-using a stored image counts as using it now, so cleanup does not remove it while an edit holds it.
             try { Files.setLastModifiedTime(target, java.nio.file.attribute.FileTime.from(java.time.Instant.now())); }
             catch (IOException e) { /* only affects how soon an unused copy may be cleaned up */ }
-        } else {
-            Files.write(target, bytes);
         }
         return target.toString();
     }
@@ -205,14 +231,31 @@ public final class Artwork {
     }
 
     public void draw(Graphics2D graphics, int x, int y, int width, int height) {
-        if (vector == null) graphics.drawImage(scaledRaster(width, height), x, y, null);
-        else vector.renderWithPlatform(NullPlatformSupport.INSTANCE, graphics, new ViewBox(x, y, width, height));
+        if (vector != null) {
+            vector.renderWithPlatform(NullPlatformSupport.INSTANCE, graphics, new ViewBox(x, y, width, height));
+            return;
+        }
+        // Scale to the pixels actually shown, so a HiDPI screen gets a sharp copy and different bar heights each keep theirs.
+        var transform = graphics.getTransform();
+        double scale = Math.hypot(transform.getScaleX(), transform.getShearY());
+        int pixelWidth = Math.max(1, (int) Math.round(width * scale));
+        int pixelHeight = Math.max(1, (int) Math.round(height * scale));
+        graphics.drawImage(scaledRaster(pixelWidth, pixelHeight), x, y, width, height, null);
     }
 
-    private BufferedImage scaledRaster(int width, int height) {
-        if (width <= 0 || height <= 0 || (width == raster.getWidth() && height == raster.getHeight())) return raster;
-        BufferedImage cached = scaled;
-        if (cached != null && cached.getWidth() == width && cached.getHeight() == height) return cached;
+    /** Number of pre-scaled copies currently kept; for tests. */
+    synchronized int cachedSizes() { return scaledCache.size(); }
+
+    /**
+     * A copy of the image at {@code width} x {@code height} pixels. A few recent sizes are kept (at most
+     * {@link #MAX_CACHED_SIZES} and {@link #MAX_CACHE_BYTES} in total), so bars of different heights and animations that
+     * change the size every frame do not throw each other's copies away. Sizes beyond the source are not scaled up.
+     */
+    private synchronized BufferedImage scaledRaster(int width, int height) {
+        if (width >= raster.getWidth() && height >= raster.getHeight()) return raster;
+        long key = ((long) width << 32) | height;
+        BufferedImage cached = scaledCache.get(key);
+        if (cached != null) return cached;
         BufferedImage result = ImageUtil.createImage(width, height, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = result.createGraphics();
         try {
@@ -220,7 +263,15 @@ public final class Artwork {
             g.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING, java.awt.RenderingHints.VALUE_RENDER_QUALITY);
             g.drawImage(raster, 0, 0, width, height, null);
         } finally { g.dispose(); }
-        scaled = result;
+        scaledCache.put(key, result);
+        scaledBytes += 4L * width * height;
+        var oldest = scaledCache.entrySet().iterator();
+        while (scaledCache.size() > 1 && (scaledCache.size() > MAX_CACHED_SIZES || scaledBytes > MAX_CACHE_BYTES) && oldest.hasNext()) {
+            var entry = oldest.next();
+            if (entry.getValue() == result) continue; // never drop the copy just made
+            scaledBytes -= 4L * entry.getValue().getWidth() * entry.getValue().getHeight();
+            oldest.remove();
+        }
         return result;
     }
 }

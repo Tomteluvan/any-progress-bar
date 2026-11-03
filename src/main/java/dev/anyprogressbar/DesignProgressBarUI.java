@@ -5,7 +5,11 @@ import com.intellij.ui.JBColor;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Frame;
 import java.awt.Insets;
+import java.awt.Window;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
 import java.beans.PropertyChangeListener;
@@ -21,13 +25,20 @@ public final class DesignProgressBarUI extends BasicProgressBarUI implements Ani
     private ChangeListener valueListener;
     private PropertyChangeListener propertyListener;
     private boolean registered;
+    private Window watchedWindow;
+    private final WindowAdapter windowListener = new WindowAdapter() {
+        @Override public void windowDeiconified(WindowEvent e) {
+            progressBar.repaint();
+            AnimationClock.getInstance().wake();
+        }
+    };
 
     public static ComponentUI createUI(JComponent component) { return new DesignProgressBarUI(); }
 
     @Override public void installUI(JComponent component) {
         super.installUI(component);
         visibilityListener = event -> {
-            if ((event.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0) updateRegistration();
+            if ((event.getChangeFlags() & (HierarchyEvent.SHOWING_CHANGED | HierarchyEvent.PARENT_CHANGED)) != 0) updateRegistration();
         };
         valueListener = event -> {
             // A bar that was idle (0% / 100%) must repaint and may need to start animating again.
@@ -50,13 +61,27 @@ public final class DesignProgressBarUI extends BasicProgressBarUI implements Ani
     }
 
     private void updateRegistration() {
+        watchWindow(javax.swing.SwingUtilities.getWindowAncestor(progressBar));
         boolean wanted = progressBar.isShowing();
         if (wanted && !registered) AnimationClock.getInstance().register(this);
         else if (!wanted && registered) AnimationClock.getInstance().unregister(this);
         registered = wanted;
     }
 
+    /** Follows the window the bar is in, so animation can resume as soon as it is restored from the taskbar. */
+    private void watchWindow(Window window) {
+        if (window == watchedWindow) return;
+        if (watchedWindow != null) watchedWindow.removeWindowListener(windowListener);
+        watchedWindow = window;
+        if (window != null) window.addWindowListener(windowListener);
+    }
+
+    private boolean windowMinimized() {
+        return watchedWindow instanceof Frame frame && (frame.getExtendedState() & Frame.ICONIFIED) != 0;
+    }
+
     @Override public void uninstallUI(JComponent component) {
+        watchWindow(null);
         if (registered) AnimationClock.getInstance().unregister(this);
         registered = false;
         component.removeHierarchyListener(visibilityListener);
@@ -66,10 +91,15 @@ public final class DesignProgressBarUI extends BasicProgressBarUI implements Ani
     }
 
     @Override public boolean isAnimating() {
-        if (!progressBar.isShowing()) return false;
+        if (!progressBar.isShowing() || windowMinimized()) return false;
         if (progressBar.isIndeterminate()) return true;
         double progress = progressBar.getPercentComplete();
-        return progress > 0 && progress < 1;
+        if (progress <= 0 || progress >= 1) return false;
+        // A determinate bar only needs frames when its design has something that moves by itself.
+        ProgressPainter painter = ProgressInstallation.getInstance().painter();
+        if (painter == null || progressBar.getOrientation() != JProgressBar.HORIZONTAL) return false;
+        Insets insets = progressBar.getInsets();
+        return painter.animatesWhenDeterminate(progressBar.getHeight() - insets.top - insets.bottom);
     }
 
     @Override public void tick() {

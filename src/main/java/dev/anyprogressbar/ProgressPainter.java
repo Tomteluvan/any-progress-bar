@@ -117,6 +117,16 @@ public final class ProgressPainter {
         return indeterminate && motion == Design.Motion.PING_PONG && (seconds * speed / 400.0) % 2.0 > 1;
     }
 
+    /**
+     * True when a determinate bar of this height still changes over time (a scrolling trail or a moving object), false
+     * when it only changes with its value, so it need not be repainted every frame.
+     */
+    public boolean animatesWhenDeterminate(int height) {
+        if (height < MIN_ARTWORK_HEIGHT) return false;
+        if (trail != null && design.trailLength > 0) return true;
+        return object != null && design.motion != Design.Motion.GLIDE && design.motion != Design.Motion.PING_PONG;
+    }
+
     public void paint(Graphics2D graphics, int width, int height, double progress, boolean indeterminate,
                       double seconds, Color fallback, boolean leftToRight) {
         if (width <= 0 || height <= 0) return;
@@ -141,7 +151,17 @@ public final class ProgressPainter {
             if (trail != null && design.trailLength > 0) {
                 Graphics2D t = (Graphics2D) g.create();
                 try {
-                    int start = Math.max(0, edge - design.trailLength);
+                    // On the return leg the object faces left, so the trail runs behind it on its right: mirror the trail
+                    // around the object and draw it as usual.
+                    boolean back = returning(indeterminate, seconds, design.speed, design.motion);
+                    double mirror = object == null ? edge : x + objectWidth / 2.0;
+                    int low = 0;
+                    if (back) {
+                        t.translate(2 * mirror, 0);
+                        t.scale(-1, 1);
+                        low = (int) Math.round(2 * mirror - width);
+                    }
+                    int start = Math.max(low, edge - design.trailLength);
                     t.clipRect(start, 0, edge - start, height);
                     int tileWidth = Math.max(1, Math.round(height * trail.aspect()));
                     int offset = (int) (seconds * design.speed / 4) % tileWidth;

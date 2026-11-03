@@ -164,12 +164,29 @@ public final class DesignPack {
             if (design.category.length() > MAX_NAME_LENGTH) {
                 throw new IOException("Invalid design file: the category is longer than " + MAX_NAME_LENGTH + " characters.");
             }
-            design.objectImage = resolve(props.getProperty("object", ""), images, assets);
-            design.trailImage = resolve(props.getProperty("trail", ""), images, assets);
-            design.backgroundImage = resolve(props.getProperty("background", ""), images, assets);
+            // Nothing is written until the whole pack has been checked: stage every layer, validate, then store.
+            Staged[] staged = new Staged[LAYERS.length];
+            for (int i = 0; i < LAYERS.length; i++) {
+                staged[i] = stage(props.getProperty(LAYERS[i], ""), images);
+                if (staged[i].bytes() != null) Artwork.validate(staged[i].bytes(), staged[i].extension());
+            }
+            design.objectImage = staged[0].bundled();
+            design.trailImage = staged[1].bundled();
+            design.backgroundImage = staged[2].bundled();
             design.validate();
-            new ProgressPainter(design);
-            return design;
+            var created = new java.util.ArrayList<Path>();
+            boolean complete = false;
+            try {
+                if (staged[0].bytes() != null) design.objectImage = Artwork.importBytes(staged[0].bytes(), staged[0].extension(), assets, created);
+                if (staged[1].bytes() != null) design.trailImage = Artwork.importBytes(staged[1].bytes(), staged[1].extension(), assets, created);
+                if (staged[2].bytes() != null) design.backgroundImage = Artwork.importBytes(staged[2].bytes(), staged[2].extension(), assets, created);
+                new ProgressPainter(design);
+                complete = true;
+                return design;
+            } finally {
+                // Only files this import created are removed; images that were already stored are never touched.
+                if (!complete) for (Path file : created) Files.deleteIfExists(file);
+            }
         } catch (IllegalArgumentException e) {
             throw new IOException("Invalid design file: " + e.getMessage(), e);
         }
@@ -186,8 +203,11 @@ public final class DesignPack {
         if (format < 1) throw new IOException("Invalid design file: unsupported format " + format + ".");
     }
 
-    private static String resolve(String value, java.util.Map<String, byte[]> images, Path assets) throws IOException {
-        if (value.isBlank()) return "";
+    /** One layer of a pack, checked but not yet stored: either a bundled reference or the bytes of a custom image. */
+    private record Staged(String bundled, byte[] bytes, String extension) {}
+
+    private static Staged stage(String value, java.util.Map<String, byte[]> images) throws IOException {
+        if (value.isBlank()) return new Staged("", null, "");
         if (value.startsWith("bundled:")) {
             String name = value.substring(8);
             if (!name.matches("[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*\\.(svg|png|jpe?g)") || name.contains("..")) {
@@ -196,13 +216,13 @@ public final class DesignPack {
             if (Artwork.class.getResource("/art/" + name) == null) {
                 throw new IOException("Unknown bundled artwork: " + value);
             }
-            return value;
+            return new Staged(value, null, "");
         }
         if (!value.startsWith("file:") || !images.containsKey(value.substring(5))) {
             throw new IOException("Design file references a missing image: " + value);
         }
         String entry = value.substring(5);
-        return Artwork.importBytes(images.get(entry), Artwork.extensionOf(entry), assets);
+        return new Staged("", images.get(entry), Artwork.extensionOf(entry));
     }
 
     private static boolean isLayerEntry(String name) {

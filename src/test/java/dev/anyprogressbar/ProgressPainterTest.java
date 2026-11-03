@@ -235,4 +235,62 @@ class ProgressPainterTest {
         Files.writeString(junk, "not a zip");
         assertThrows(IOException.class, () -> DesignPack.importFrom(junk, temp.resolve("assets")));
     }
+
+    private Path solidPng(String name, Color color) throws IOException {
+        var image = new BufferedImage(24, 24, BufferedImage.TYPE_INT_ARGB);
+        var g = image.createGraphics();
+        g.setColor(color);
+        g.fillRect(0, 0, 24, 24);
+        g.dispose();
+        Path file = temp.resolve(name);
+        ImageIO.write(image, "png", file.toFile());
+        return file;
+    }
+
+    private ProgressPainter pingPongWithTrail() throws IOException {
+        Design d = new Design();
+        d.backgroundColor = "#000000";
+        d.objectImage = solidPng("object.png", Color.RED).toString();
+        d.trailImage = solidPng("trail.png", Color.GREEN).toString();
+        d.size = 24;
+        d.trailLength = 60;
+        d.motion = Design.Motion.PING_PONG;
+        return new ProgressPainter(d);
+    }
+
+    private static boolean green(int argb) { return ((argb >> 8) & 0xff) > 200 && ((argb >> 16) & 0xff) < 50; }
+    private static boolean red(int argb) { return ((argb >> 16) & 0xff) > 200 && ((argb >> 8) & 0xff) < 50; }
+
+    @Test void trailSitsBehindTheObjectOnBothLegsOfPingPong() throws IOException {
+        ProgressPainter painter = pingPongWithTrail();
+        // speed 100: a lap takes 4 s, so 2 s is halfway out and 6 s is halfway back
+        for (double seconds : new double[]{2, 6}) {
+            boolean back = seconds == 6;
+            BufferedImage image = render(painter, 0, true, seconds, true);
+            int row = 16;
+            int firstRed = -1, lastRed = -1;
+            for (int x = 0; x < 320; x++) if (red(image.getRGB(x, row))) { if (firstRed < 0) firstRed = x; lastRed = x; }
+            assertTrue(firstRed > 0, "object visible");
+            int before = firstRed - 15, after = lastRed + 15;
+            assertEquals(!back, green(image.getRGB(before, row)), "trail left of the object at " + seconds + " s");
+            assertEquals(back, green(image.getRGB(after, row)), "trail right of the object at " + seconds + " s");
+        }
+    }
+
+    @Test void determinateBarsOnlyKeepAnimatingWhenTheDesignMovesByItself() throws IOException {
+        Design plain = new Design();
+        plain.objectImage = "bundled:cat.svg";
+        plain.motion = Design.Motion.GLIDE;
+        assertFalse(new ProgressPainter(plain).animatesWhenDeterminate(32));
+        plain.motion = Design.Motion.PING_PONG;
+        assertFalse(new ProgressPainter(plain).animatesWhenDeterminate(32));
+        plain.motion = Design.Motion.BOUNCE;
+        assertTrue(new ProgressPainter(plain).animatesWhenDeterminate(32));
+        assertFalse(new ProgressPainter(plain).animatesWhenDeterminate(8), "short bars are drawn as a plain fill");
+        Design trailed = new Design();
+        trailed.trailImage = "bundled:rainbow.svg";
+        assertTrue(new ProgressPainter(trailed).animatesWhenDeterminate(32));
+        trailed.trailLength = 0;
+        assertFalse(new ProgressPainter(trailed).animatesWhenDeterminate(32));
+    }
 }

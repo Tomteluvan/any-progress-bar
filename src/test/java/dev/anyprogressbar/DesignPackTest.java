@@ -294,4 +294,42 @@ class DesignPackTest {
         assertThrows(IOException.class, () -> DesignPack.importFrom(pack(entries("format=0\nname=X\n")), assets()));
         assertThrows(IOException.class, () -> DesignPack.importFrom(pack(entries("format=abc\nname=X\n")), assets()));
     }
+
+    @Test void invalidDesignValuesAfterAValidImageStoreNothing() throws IOException {
+        var map = entries("name=Late failure\nobject=file:object.png\nsize=9999\n");
+        map.put("object.png", png());
+        assertThrows(IOException.class, () -> DesignPack.importFrom(pack(map), assets()));
+        if (Files.exists(assets())) {
+            try (Stream<Path> files = Files.list(assets())) { assertEquals(0, files.count()); }
+        }
+    }
+
+    @Test void aBrokenLaterLayerStoresNoEarlierImage() throws IOException {
+        var map = entries("name=Half bad\nobject=file:object.png\ntrail=file:trail.png\n");
+        map.put("object.png", png());
+        map.put("trail.png", text("not an image"));
+        assertThrows(IOException.class, () -> DesignPack.importFrom(pack(map), assets()));
+        if (Files.exists(assets())) {
+            try (Stream<Path> files = Files.list(assets())) { assertEquals(0, files.count()); }
+        }
+    }
+
+    @Test void failedImportKeepsImagesThatWereAlreadyStored() throws IOException {
+        var good = entries("name=Good\nobject=file:object.png\n");
+        good.put("object.png", png());
+        DesignPack.importFrom(pack(good), assets());
+        var bad = entries("name=Bad\nobject=file:object.png\ntrail=file:trail.png\n");
+        bad.put("object.png", png());
+        bad.put("trail.png", text("not an image"));
+        assertThrows(IOException.class, () -> DesignPack.importFrom(pack(bad), assets()));
+        try (Stream<Path> files = Files.list(assets())) { assertEquals(1, files.count()); }
+    }
+
+    @Test void artworkRollbackListsOnlyNewlyCreatedFiles() throws IOException {
+        var created = new java.util.ArrayList<Path>();
+        Artwork.importBytes(png(), "png", assets(), created);
+        assertEquals(1, created.size());
+        Artwork.importBytes(png(), "png", assets(), created); // same content: already stored, so not ours to remove
+        assertEquals(1, created.size());
+    }
 }

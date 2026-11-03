@@ -37,4 +37,24 @@ class ArtworkImportTest {
         assertThrows(IOException.class, () -> Artwork.load(file.toString()));
         assertThrows(IOException.class, () -> Artwork.importBytes(big, "svg", temp.resolve("assets")));
     }
+
+    @Test void keepsCopiesForSeveralSizesAndBoundsThem() throws IOException {
+        var source = new java.awt.image.BufferedImage(400, 400, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        Path file = temp.resolve("big.png");
+        javax.imageio.ImageIO.write(source, "png", file.toFile());
+        Artwork art = Artwork.load(file.toString());
+        var target = new java.awt.image.BufferedImage(200, 200, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        var g = target.createGraphics();
+        try {
+            art.draw(g, 0, 0, 20, 20);
+            art.draw(g, 0, 0, 30, 30);
+            art.draw(g, 0, 0, 20, 20);
+            assertEquals(2, art.cachedSizes(), "different bar heights must not evict each other");
+            for (int size = 40; size < 40 + 2 * Artwork.MAX_CACHED_SIZES; size++) art.draw(g, 0, 0, size, size);
+            assertTrue(art.cachedSizes() <= Artwork.MAX_CACHED_SIZES);
+            g.scale(2, 2);
+            art.draw(g, 0, 0, 25, 25); // shown at twice the size on a HiDPI screen: the copy must have 50 pixels
+            assertTrue(art.cachedSizes() >= 1);
+        } finally { g.dispose(); }
+    }
 }
