@@ -31,6 +31,9 @@ public final class ProgressSettings implements PersistentStateComponent<Progress
         public boolean enabled = true;
         public int presetVersion = 0; // 0 = saved before theme presets existed
         public String selectedId = "preset-cat";
+        public boolean randomize = false;
+        public int randomMinutes = 0; // 0 = only pick at IDE start
+        public List<String> randomIds = new ArrayList<>(); // favourites the startup pick chooses from
         public List<Design> designs = new ArrayList<>(Design.presets());
 
         public Data copy() {
@@ -38,13 +41,17 @@ public final class ProgressSettings implements PersistentStateComponent<Progress
             d.enabled = enabled;
             d.selectedId = selectedId;
             d.presetVersion = presetVersion;
+            d.randomize = randomize;
+            d.randomMinutes = randomMinutes;
+            d.randomIds = new ArrayList<>(randomIds);
             d.designs = new ArrayList<>(designs.stream().map(Design::copy).toList());
             return d;
         }
 
         /** True when {@code other} holds the same settings: what the editor compares to know whether anything changed. */
         public boolean sameContent(Data other) {
-            if (enabled != other.enabled || !Objects.equals(selectedId, other.selectedId) || designs.size() != other.designs.size()) {
+            if (enabled != other.enabled || !Objects.equals(selectedId, other.selectedId) || designs.size() != other.designs.size()
+                    || randomize != other.randomize || randomMinutes != other.randomMinutes || !new HashSet<>(randomIds).equals(new HashSet<>(other.randomIds))) {
                 return false;
             }
             for (int i = 0; i < designs.size(); i++) if (!designs.get(i).sameContent(other.designs.get(i))) return false;
@@ -72,6 +79,8 @@ public final class ProgressSettings implements PersistentStateComponent<Progress
             result.enabled = enabled;
             result.presetVersion = presetVersion;
             result.selectedId = selectedId;
+            result.randomize = randomize;
+            result.randomMinutes = Math.max(0, Math.min(720, randomMinutes));
             result.designs = new ArrayList<>();
             var ids = new HashSet<String>();
             int position = 0;
@@ -104,7 +113,21 @@ public final class ProgressSettings implements PersistentStateComponent<Progress
                 result.selectedId = result.designs.getFirst().id;
                 notes.add("The active design was missing; \"" + result.designs.getFirst().name + "\" is active now.");
             }
+            var kept = new HashSet<String>();
+            for (Design design : result.designs) kept.add(design.id);
+            if (randomIds != null) for (String id : randomIds) if (kept.contains(id) && !result.randomIds.contains(id)) result.randomIds.add(id);
             return result;
+        }
+
+        /**
+         * The design a random start should switch to: one of the favourites, other than the current one when there is a
+         * choice. Null when randomizing is off or no favourite is left.
+         */
+        public Design randomPick(java.util.Random random) {
+            if (!randomize) return null;
+            var pool = designs.stream().filter(d -> randomIds.contains(d.id)).toList();
+            if (pool.size() > 1) pool = pool.stream().filter(d -> !d.id.equals(selectedId)).toList();
+            return pool.isEmpty() ? null : pool.get(random.nextInt(pool.size()));
         }
 
         private static String describe(Design design, int position) {
@@ -133,6 +156,13 @@ public final class ProgressSettings implements PersistentStateComponent<Progress
         fresh.presetVersion = Data.PRESET_VERSION;
         return fresh;
     }
+
+    /** Makes a random favourite the active design, once per IDE start; a no-op unless randomizing is on. */
+    public void pickRandomDesign() {
+        Design pick = data.randomPick(new java.util.Random());
+        if (pick != null) data.selectedId = pick.id;
+    }
+
     public static ProgressSettings getInstance() {
         return ApplicationManager.getApplication().getService(ProgressSettings.class);
     }

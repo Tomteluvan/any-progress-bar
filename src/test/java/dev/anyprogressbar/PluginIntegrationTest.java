@@ -298,7 +298,7 @@ public class PluginIntegrationTest extends BasePlatformTestCase {
             var buttons = new java.util.ArrayList<JButton>();
             collect(root, labels, buttons);
             var labelled = labels.stream().filter(l -> l.getLabelFor() != null).toList();
-            assertEquals(10, labelled.size());
+            assertEquals(11, labelled.size());
             for (var label : labelled) {
                 assertTrue(label.getText(), label.getLabelFor().isFocusable());
                 assertTrue(label.getText(), label.getDisplayedMnemonic() != 0);

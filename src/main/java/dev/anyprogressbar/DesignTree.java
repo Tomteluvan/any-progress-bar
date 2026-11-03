@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import javax.swing.JTree;
 import javax.swing.event.TreeExpansionEvent;
 import javax.swing.event.TreeExpansionListener;
@@ -30,7 +31,8 @@ final class DesignTree extends Tree {
     private boolean rebuilding;
     private List<Design> shownDesigns = List.of();
 
-    DesignTree() {
+    /** {@code favourite} says which designs get a star next to their name. */
+    DesignTree(Predicate<Design> favourite) {
         super(new DefaultTreeModel(new DefaultMutableTreeNode()));
         setRootVisible(false);
         setShowsRootHandles(true);
@@ -44,6 +46,9 @@ final class DesignTree extends Tree {
                     append("  " + category.count(), SimpleTextAttributes.GRAYED_ATTRIBUTES);
                 } else if (item != null) {
                     append(item.toString());
+                    if (item instanceof Design design && favourite.test(design)) {
+                        append("  \u2605", new SimpleTextAttributes(SimpleTextAttributes.STYLE_PLAIN, new java.awt.Color(0xE0A800)));
+                    }
                 }
             }
         });

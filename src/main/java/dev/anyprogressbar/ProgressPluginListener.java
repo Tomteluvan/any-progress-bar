@@ -15,5 +15,6 @@ public final class ProgressPluginListener implements DynamicPluginListener {
     @Override public void pluginLoaded(@NotNull IdeaPluginDescriptor pluginDescriptor) {
         if (!PLUGIN_ID.equals(pluginDescriptor.getPluginId().getIdString())) return;
         ProgressInstallation.getInstance().reload();
+        ProgressRotation.getInstance().reschedule();
     }
 }

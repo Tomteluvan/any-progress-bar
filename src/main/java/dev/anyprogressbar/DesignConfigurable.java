@@ -11,9 +11,11 @@ import com.intellij.ui.ColorPanel;
 import com.intellij.ui.DocumentAdapter;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.UIUtil;
 import com.intellij.util.ui.accessibility.AccessibleAnnouncerUtil;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -43,6 +45,11 @@ public final class DesignConfigurable implements Configurable {
     private JPanel content;
     private DesignTree designs;
     private JCheckBox enabled;
+    private JCheckBox randomize;
+    private JCheckBox favourite;
+    private JSpinner rotateMinutes;
+    private JLabel randomHeader;
+    private JPanel randomBody;
     private JTextField name;
     private JTextField object;
     private JTextField trail;
@@ -85,9 +92,65 @@ public final class DesignConfigurable implements Configurable {
         root = page;
         enabled = new JCheckBox("Enable custom progress bars");
         enabled.addActionListener(e -> draft.enabled = enabled.isSelected());
-        content.add(enabled, BorderLayout.NORTH);
+        randomize = new JCheckBox("Switch to a random favourite design");
+        randomize.addActionListener(e -> { draft.randomize = randomize.isSelected(); updateRandomControls(); });
+        describe(randomize, "When on, the active design is replaced by one of your favourite designs at IDE start, and optionally on a timer.");
+        rotateMinutes = new JSpinner(new SpinnerNumberModel(0, 0, 720, 5));
+        rotateMinutes.addChangeListener(e -> draft.randomMinutes = (Integer) rotateMinutes.getValue());
+        describe(spinnerField(rotateMinutes), "Minutes between random changes while the IDE runs; 0 changes the design only at IDE start.");
+        favourite = new JCheckBox("Favourite (included in the random rotation)");
+        favourite.addActionListener(e -> {
+            if (updating || selected() == null) return;
+            String id = selected().id;
+            if (favourite.isSelected()) { if (!draft.randomIds.contains(id)) draft.randomIds.add(id); }
+            else draft.randomIds.remove(id);
+            designs.repaint(); // the star in the list follows
+        });
+        describe(favourite, "Marks this design with a star. When random designs are on, the IDE picks from the starred designs.");
+        JPanel random = new JPanel(new GridBagLayout());
+        random.setBorder(JBUI.Borders.emptyLeft(18));
+        GridBagConstraints rc = new GridBagConstraints();
+        rc.gridx = 0; rc.gridy = 0; rc.gridwidth = 3; rc.anchor = GridBagConstraints.WEST;
+        random.add(randomize, rc);
+        rc.gridy = 1; rc.gridwidth = 1; rc.insets = JBUI.insets(2, 24, 0, 4);
+        JLabel every = new JLabel("Change every");
+        every.setLabelFor(spinnerField(rotateMinutes));
+        every.setDisplayedMnemonic('H');
+        random.add(every, rc);
+        rc.gridx = 1; rc.insets = JBUI.insets(2, 0, 0, 4);
+        random.add(rotateMinutes, rc);
+        rc.gridx = 2; rc.weightx = 1;
+        JLabel unit = new JLabel("minutes (0 = only when the IDE starts)");
+        unit.setForeground(UIUtil.getContextHelpForeground());
+        random.add(unit, rc);
+        rc.gridx = 0; rc.gridy = 2; rc.gridwidth = 3; rc.weightx = 0;
+        JLabel hint = new JLabel("Star designs in the editor to choose which ones are used.");
+        hint.setForeground(UIUtil.getContextHelpForeground());
+        random.add(hint, rc);
+        randomBody = random;
+        randomHeader = new JLabel("Random design");
+        randomHeader.setFocusable(true);
+        randomHeader.setBorder(JBUI.Borders.empty(2, 0));
+        randomHeader.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        randomHeader.getAccessibleContext().setAccessibleName("Random design options");
+        randomHeader.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) { setRandomExpanded(!randomBody.isVisible()); }
+        });
+        randomHeader.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_SPACE || e.getKeyCode() == KeyEvent.VK_ENTER) setRandomExpanded(!randomBody.isVisible());
+            }
+        });
+        setRandomExpanded(false);
+        JPanel randomSection = new JPanel(new BorderLayout());
+        randomSection.add(randomHeader, BorderLayout.NORTH);
+        randomSection.add(randomBody, BorderLayout.CENTER);
+        JPanel toggles = new JPanel(new BorderLayout(0, JBUI.scale(2)));
+        toggles.add(enabled, BorderLayout.NORTH);
+        toggles.add(randomSection, BorderLayout.CENTER);
+        content.add(toggles, BorderLayout.NORTH);
 
-        designs = new DesignTree();
+        designs = new DesignTree(d -> draft != null && draft.randomIds.contains(d.id));
         designs.getAccessibleContext().setAccessibleName("Designs");
         designs.getAccessibleContext().setAccessibleDescription("Your design library, grouped by category. Select a design to edit it.");
         designs.addTreeSelectionListener(e -> {
@@ -118,6 +181,7 @@ public final class DesignConfigurable implements Configurable {
             if (doomed == null) return;
             int index = draft.designs.indexOf(doomed);
             draft.designs.remove(index);
+            draft.randomIds.remove(doomed.id);
             Design next = draft.designs.get(Math.min(index, draft.designs.size() - 1));
             draft.selectedId = next.id;
             show(next);
@@ -127,6 +191,7 @@ public final class DesignConfigurable implements Configurable {
                     getDisplayName(), Messages.getQuestionIcon()) != Messages.YES) return;
             draft.designs = new java.util.ArrayList<>(Design.presets());
             draft.selectedId = draft.designs.getFirst().id;
+            draft.randomIds.clear();
             populate();
         }));
         DesignTransfer transfer = new DesignTransfer(root, getDisplayName(), () -> draft, this::selected, this::add,
@@ -190,23 +255,24 @@ public final class DesignConfigurable implements Configurable {
         describe(color, color.getToolTipText());
         describe(name, "The name shown in the design list.");
         row(editor, 8, "Motion", 'M', withError(Design.Field.MOTION, motion, motion), motion);
-        row(editor, 9, "", new JLabel("Clear any image to omit it. Empty colour uses the IDE colour."));
-        row(editor, 10, "", new JLabel("Background images overlay the colour. PNG, JPG and static SVG supported."));
+        row(editor, 9, "", favourite);
+        row(editor, 10, "", new JLabel("Clear any image to omit it. Empty colour uses the IDE colour."));
+        row(editor, 11, "", new JLabel("Background images overlay the colour. PNG, JPG and static SVG supported."));
         error = new JLabel(" ");
         error.setForeground(JBUI.CurrentTheme.Label.errorForeground());
         error.getAccessibleContext().setAccessibleName("Validation message");
-        row(editor, 11, "", error);
+        row(editor, 12, "", error);
         preview = new DesignPreview();
         preview.getAccessibleContext().setAccessibleName("Live preview");
         preview.getAccessibleContext().setAccessibleDescription(
             "Animated preview of the selected design as indeterminate, determinate, compact and status bar progress bars.");
-        row(editor, 12, "Live preview", preview);
+        row(editor, 13, "Live preview", preview);
         JSlider progress = new JSlider(0, 100, 65);
         describe(progress, "Progress shown in the determinate previews, 0 to 100 percent.");
         progress.addChangeListener(e -> { preview.progress = progress.getValue() / 100.0; preview.repaint(); });
-        row(editor, 13, "Determinate progress", 'D', progress, progress);
+        row(editor, 14, "Determinate progress", 'D', progress, progress);
         GridBagConstraints filler = new GridBagConstraints();
-        filler.gridy = 14;
+        filler.gridy = 15;
         filler.weighty = 1;
         editor.add(new JPanel(), filler);
         content.add(editor, BorderLayout.CENTER);
@@ -335,6 +401,21 @@ public final class DesignConfigurable implements Configurable {
         show(design);
     }
 
+    /** Shows or hides the random design options; the header arrow and the state read by assistive technology follow. */
+    private void setRandomExpanded(boolean expanded) {
+        randomBody.setVisible(expanded);
+        randomHeader.setIcon(expanded ? com.intellij.icons.AllIcons.General.ArrowDown : com.intellij.icons.AllIcons.General.ArrowRight);
+        describe(randomHeader, expanded ? "Expanded. Press Space to hide the options." : "Collapsed. Press Space to show the options.");
+        content.revalidate();
+        content.repaint();
+    }
+
+    /** The interval and favourite controls only matter while random designs are switched on. */
+    private void updateRandomControls() {
+        boolean on = randomize.isSelected();
+        rotateMinutes.setEnabled(on);
+    }
+
     private void changed() {
         if (updating || selected() == null) return;
         Design d = selected();
@@ -367,6 +448,7 @@ public final class DesignConfigurable implements Configurable {
         draft.designs = new java.util.ArrayList<>(imported.designs());
         Design active = imported.active();
         draft.selectedId = (active != null ? active : draft.designs.getFirst()).id;
+        draft.randomIds.clear();
         populate();
     }
 
@@ -507,6 +589,7 @@ public final class DesignConfigurable implements Configurable {
             speed.setValue(d.speed);
             trailLength.setValue(d.trailLength);
             motion.setSelectedItem(d.motion);
+            favourite.setSelected(draft.randomIds.contains(d.id));
         } finally { updating = false; }
         preview.painter = null; // a different design must never show the previous one's preview
         builtKey = "";
@@ -533,6 +616,8 @@ public final class DesignConfigurable implements Configurable {
             size.commitEdit();
             speed.commitEdit();
             trailLength.commitEdit();
+            rotateMinutes.commitEdit();
+            draft.randomMinutes = (Integer) rotateMinutes.getValue();
             draft.enabled = enabled.isSelected();
             for (Design design : draft.designs) {
                 var problems = design.problems();
@@ -548,6 +633,7 @@ public final class DesignConfigurable implements Configurable {
             }
             ProgressSettings.getInstance().loadState(draft);
             ProgressInstallation.getInstance().reload();
+            ProgressRotation.getInstance().reschedule();
             AssetCleanup.cleanInBackground(draft.designs);
         } catch (ProcessCanceledException cancelled) {
             throw new ConfigurationException("Applying was cancelled.");
@@ -560,6 +646,10 @@ public final class DesignConfigurable implements Configurable {
         if (root == null) return;
         draft = Objects.requireNonNull(ProgressSettings.getInstance().getState()).copy();
         enabled.setSelected(draft.enabled);
+        randomize.setSelected(draft.randomize);
+        rotateMinutes.setValue(draft.randomMinutes);
+        updateRandomControls();
+        if (draft.randomize) setRandomExpanded(true); // an option that is switched on is never hidden
         populate();
     }
 

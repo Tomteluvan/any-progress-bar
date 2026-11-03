@@ -1,5 +1,6 @@
 package dev.anyprogressbar;
 
+import com.intellij.ide.ui.UISettings;
 import com.intellij.util.ui.JBUI;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -23,6 +24,8 @@ final class DesignPreview extends JPanel {
         double seconds = (System.nanoTime() - started) / 1_000_000_000.0;
         Graphics2D g = (Graphics2D) graphics.create();
         try {
+            // A bare Graphics2D draws unsmoothed text; Swing components get the IDE's text antialiasing set up for them.
+            UISettings.setupAntialiasing(g);
             g.setFont(JBUI.Fonts.label());
             g.setColor(getForeground());
             g.drawString("Indeterminate", 0, JBUI.scale(12));

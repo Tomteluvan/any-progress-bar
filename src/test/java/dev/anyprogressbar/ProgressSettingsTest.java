@@ -212,4 +212,48 @@ class ProgressSettingsTest {
         assertEquals("Ping-pong", Design.Motion.PING_PONG.label());
         for (Design.Motion motion : Design.Motion.values()) assertFalse(motion.label().contains("_"));
     }
+
+    @Test void randomPickIsOffUnlessEnabledAndNeedsFavourites() {
+        var data = new ProgressSettings.Data();
+        data.randomIds.add("preset-mug");
+        assertNull(data.randomPick(new java.util.Random(1)));
+        data.randomize = true;
+        assertEquals("preset-mug", data.randomPick(new java.util.Random(1)).id);
+        data.randomIds.clear();
+        assertNull(data.randomPick(new java.util.Random(1)));
+    }
+
+    @Test void randomPickOnlyChoosesFavouritesAndAvoidsTheCurrentOne() {
+        var data = new ProgressSettings.Data();
+        data.randomize = true;
+        data.randomIds.addAll(java.util.List.of("preset-mug", "preset-chair", "no-such-design"));
+        data.selectedId = "preset-mug";
+        for (int i = 0; i < 50; i++) assertEquals("preset-chair", data.randomPick(new java.util.Random(i)).id);
+    }
+
+    @Test void randomSettingsSurviveCopyAndCountAsChanges() {
+        var data = new ProgressSettings.Data();
+        var copy = data.copy();
+        assertTrue(data.sameContent(copy));
+        copy.randomize = true;
+        assertFalse(data.sameContent(copy));
+        copy = data.copy();
+        copy.randomMinutes = 30;
+        assertFalse(data.sameContent(copy));
+        copy = data.copy();
+        copy.randomIds.add("preset-mug");
+        assertFalse(data.sameContent(copy));
+        data.randomize = true;
+        data.randomIds.add("preset-mug");
+        assertTrue(data.sameContent(data.copy()));
+    }
+
+    @Test void repairDropsFavouritesOfRemovedDesigns() {
+        var data = new ProgressSettings.Data();
+        data.randomize = true;
+        data.randomIds.addAll(java.util.List.of("preset-mug", "gone"));
+        var repaired = data.repaired(new ArrayList<>());
+        assertTrue(repaired.randomize);
+        assertEquals(java.util.List.of("preset-mug"), repaired.randomIds);
+    }
 }

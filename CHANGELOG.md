@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- Random design: in the collapsible "Random design" section, switch on "Switch to a random favourite design" to make one of your favourites the active design at every IDE start, never the same one twice in a row when you have more than one. Set "Change every N minutes" to have it switch while the IDE is running too; 0 keeps it to IDE start.
+- Mark a design as a favourite with the "Favourite" checkbox in its editor; favourites show a star next to their name in the list.
+
 ## 1.8.0
 - Ten new presets in the playful character style: Sloth skater, Pizza scooter, Octopus barista, Ghost commuter, Dino on a bike, Toaster jetpack, Narwhal submarine, Snowman surfer, Sushi train and Gingerbread dash. Existing libraries receive them once without changing custom designs, the active selection or presets you deleted.
 - Forty seasonal presets: ten each for autumn, winter and Christmas, spring and summer. The design list now groups them under categories you can open and close; presets without a category stay at the top and are always shown. Existing libraries receive them once. Categories are kept when exporting and importing designs and libraries.
