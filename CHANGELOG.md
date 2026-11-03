@@ -1,8 +1,13 @@
 # Changelog
 
-## Unreleased
+## 1.9.0
 - Random design: in the collapsible "Random design" section, switch on "Switch to a random favourite design" to make one of your favourites the active design at every IDE start, never the same one twice in a row when you have more than one. Set "Change every N minutes" to have it switch while the IDE is running too; 0 keeps it to IDE start.
 - Mark a design as a favourite with the "Favourite" checkbox in its editor; favourites show a star next to their name in the list.
+- Animation pauses while the IDE window is minimized, and determinate bars only animate when their design has a scrolling trail or an object that moves by itself.
+- The trail now stays behind the object on the return leg of ping-pong motion.
+- Importing a design is all-or-nothing: a design that fails validation no longer leaves unused images behind, and images you already had are never removed.
+- Artwork keeps scaled copies for several bar sizes within a memory limit, and scales to the pixels actually shown, so HiDPI screens stay sharp.
+- Smoother text in the settings preview labels.
 
 ## 1.8.0
 - Ten new presets in the playful character style: Sloth skater, Pizza scooter, Octopus barista, Ghost commuter, Dino on a bike, Toaster jetpack, Narwhal submarine, Snowman surfer, Sushi train and Gingerbread dash. Existing libraries receive them once without changing custom designs, the active selection or presets you deleted.
