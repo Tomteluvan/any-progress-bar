@@ -1,5 +1,5 @@
 [versions]
-intellij-platform = "2.19.0"
+intellij-platform = "2.20.0"
 jsvg = "1.6.1"
 changelog = "2.5.0"
 junit5 = "6.1.3"
