@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import org.jetbrains.annotations.NotNull;
 
 public final class DesignConfigurable implements Configurable {
@@ -343,10 +342,8 @@ public final class DesignConfigurable implements Configurable {
         row.add(field);
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(2), 0));
         JButton browse = button("Browse", () -> {
-            JFileChooser chooser = new JFileChooser();
-            chooser.setFileFilter(new FileNameExtensionFilter("Images (PNG, JPG, SVG)", "png", "jpg", "jpeg", "svg"));
-            if (chooser.showOpenDialog(root) != JFileChooser.APPROVE_OPTION) return;
-            Path file = chooser.getSelectedFile().toPath();
+            Path file = DesignTransfer.chooseOpen(root, "Images (PNG, JPG, SVG)", "png", "jpg", "jpeg", "svg");
+            if (file == null) return;
             try {
                 String reference = DesignTransfer.inBackground(root, "Importing image", () -> Artwork.importFile(file, Artwork.assetsDirectory()));
                 assign.accept(reference);

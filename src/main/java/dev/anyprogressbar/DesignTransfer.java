@@ -1,16 +1,20 @@
 package dev.anyprogressbar;
 
+import com.intellij.openapi.fileChooser.FileChooser;
+import com.intellij.openapi.fileChooser.FileChooserDescriptor;
+import com.intellij.openapi.fileChooser.FileChooserFactory;
+import com.intellij.openapi.fileChooser.FileSaverDescriptor;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.vfs.VirtualFile;
+import java.awt.Component;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import javax.swing.JComponent;
-import javax.swing.JFileChooser;
-import javax.swing.filechooser.FileNameExtensionFilter;
 
 /** The settings page's file dialogs: exporting and importing single designs and whole libraries. */
 final class DesignTransfer {
@@ -61,19 +65,34 @@ final class DesignTransfer {
         return result.get();
     }
 
+    /** The IDE's own open dialog; null when cancelled. */
+    static Path chooseOpen(Component parent, String description, String... extensions) {
+        FileChooserDescriptor descriptor = new FileChooserDescriptor(true, false, false, false, false, false)
+            .withExtensionFilter(description, extensions);
+        VirtualFile chosen = FileChooser.chooseFile(descriptor, parent, null, null);
+        return chosen == null ? null : chosen.toNioPath();
+    }
+
+    /** The IDE's own save dialog; null when cancelled. It confirms overwrites itself, so we only ask when we had to append the extension. */
+    private Path chooseSave(String description, String extension, String defaultName) {
+        var wrapper = FileChooserFactory.getInstance()
+            .createSaveFileDialog(new FileSaverDescriptor(title, description, extension), root)
+            .save((VirtualFile) null, defaultName);
+        if (wrapper == null) return null;
+        Path target = wrapper.getFile().toPath();
+        if (target.getFileName().toString().toLowerCase(java.util.Locale.ROOT).endsWith("." + extension)) return target;
+        target = target.resolveSibling(target.getFileName() + "." + extension);
+        boolean replace = !java.nio.file.Files.exists(target) || Messages.showYesNoDialog(root,
+            target.getFileName() + " already exists. Replace it?", title, Messages.getQuestionIcon()) == Messages.YES;
+        return replace ? target : null;
+    }
+
     void exportSelected() {
         Design design = selected.get();
         if (design == null) return;
-        JFileChooser chooser = new JFileChooser();
-        chooser.setSelectedFile(new java.io.File(design.name.replaceAll("[^A-Za-z0-9._-]+", "_") + "." + DesignPack.EXTENSION));
-        chooser.setFileFilter(new FileNameExtensionFilter("Any Progress Bar design", DesignPack.EXTENSION));
-        if (chooser.showSaveDialog(root) != JFileChooser.APPROVE_OPTION) return;
-        Path target = chooser.getSelectedFile().toPath();
-        if (!target.getFileName().toString().toLowerCase(java.util.Locale.ROOT).endsWith("." + DesignPack.EXTENSION)) {
-            target = target.resolveSibling(target.getFileName() + "." + DesignPack.EXTENSION);
-        }
-        if (java.nio.file.Files.exists(target) && Messages.showYesNoDialog(root, target.getFileName() + " already exists. Replace it?",
-                title, Messages.getQuestionIcon()) != Messages.YES) return;
+        Path target = chooseSave("Any Progress Bar design", DesignPack.EXTENSION,
+            design.name.replaceAll("[^A-Za-z0-9._-]+", "_") + "." + DesignPack.EXTENSION);
+        if (target == null) return;
         Design snapshot = design.copy();
         Path destination = target;
         try {
@@ -87,16 +106,8 @@ final class DesignTransfer {
     }
 
     void exportLibrary() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setSelectedFile(new java.io.File("any-progress-bar-library." + LibraryPack.EXTENSION));
-        chooser.setFileFilter(new FileNameExtensionFilter("Any Progress Bar library", LibraryPack.EXTENSION));
-        if (chooser.showSaveDialog(root) != JFileChooser.APPROVE_OPTION) return;
-        Path target = chooser.getSelectedFile().toPath();
-        if (!target.getFileName().toString().toLowerCase(java.util.Locale.ROOT).endsWith("." + LibraryPack.EXTENSION)) {
-            target = target.resolveSibling(target.getFileName() + "." + LibraryPack.EXTENSION);
-        }
-        if (java.nio.file.Files.exists(target) && Messages.showYesNoDialog(root, target.getFileName() + " already exists. Replace it?",
-                title, Messages.getQuestionIcon()) != Messages.YES) return;
+        Path target = chooseSave("Any Progress Bar library", LibraryPack.EXTENSION, "any-progress-bar-library." + LibraryPack.EXTENSION);
+        if (target == null) return;
         var snapshot = draft.get().designs.stream().map(Design::copy).toList();
         String activeId = draft.get().selectedId;
         Path destination = target;
@@ -111,11 +122,9 @@ final class DesignTransfer {
     }
 
     void importLibrary() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setFileFilter(new FileNameExtensionFilter("Any Progress Bar library", LibraryPack.EXTENSION));
-        if (chooser.showOpenDialog(root) != JFileChooser.APPROVE_OPTION) return;
+        Path file = chooseOpen(root, "Any Progress Bar library", LibraryPack.EXTENSION);
+        if (file == null) return;
         LibraryPack.Imported imported;
-        Path file = chooser.getSelectedFile().toPath();
         try {
             imported = inBackground(root, "Importing library", () -> LibraryPack.importFrom(file, Artwork.assetsDirectory()));
         } catch (ProcessCanceledException cancelled) {
@@ -143,10 +152,8 @@ final class DesignTransfer {
     }
 
     void importDesign() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setFileFilter(new FileNameExtensionFilter("Any Progress Bar design", DesignPack.EXTENSION));
-        if (chooser.showOpenDialog(root) != JFileChooser.APPROVE_OPTION) return;
-        Path file = chooser.getSelectedFile().toPath();
+        Path file = chooseOpen(root, "Any Progress Bar design", DesignPack.EXTENSION);
+        if (file == null) return;
         try {
             add.accept(inBackground(root, "Importing design", () -> DesignPack.importFrom(file, Artwork.assetsDirectory())));
         } catch (ProcessCanceledException cancelled) {
