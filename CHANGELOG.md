@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.10.0
+- Import, export and image Browse now use the IDE's own file dialogs, which fixes the duplicated, overlapping column headers in the file chooser.
+- Internal: updated Gradle, the IntelliJ Platform plugin and CI actions.
+
 ## 1.9.0
 - Random design: in the collapsible "Random design" section, switch on "Switch to a random favourite design" to make one of your favourites the active design at every IDE start, never the same one twice in a row when you have more than one. Set "Change every N minutes" to have it switch while the IDE is running too; 0 keeps it to IDE start.
 - Mark a design as a favourite with the "Favourite" checkbox in its editor; favourites show a star next to their name in the list.
